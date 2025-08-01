@@ -267,19 +267,8 @@ function ChatApp() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="app-container">
-        <div className="loading-screen">
-          <h1>LibraChat</h1>
-          <p>Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!isAuthenticated) {
-    return <LandingPage onShowAuth={() => setShowAuthModal(true)} />;
+    return null; // This component should only render when authenticated
   }
 
   return (
