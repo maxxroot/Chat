@@ -63,11 +63,14 @@ const InviteUsersModal = ({ isOpen, onClose, roomId, roomName }) => {
     const query = e.target.value;
     setSearchQuery(query);
     
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
     // Debounce search
-    setTimeout(() => {
-      if (query === searchQuery) {
-        searchUsers(query);
-      }
+    debounceRef.current = setTimeout(() => {
+      searchUsers(query);
     }, 300);
   };
 
