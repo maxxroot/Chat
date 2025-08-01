@@ -208,6 +208,9 @@ class SendPrivateMessageRequest(BaseModel):
     recipient_mxid: str
     message: str
 
+class InviteToRoomRequest(BaseModel):
+    user_mxids: List[str]  # List of Matrix IDs to invite to the room
+
 # Crypto utilities for Matrix federation
 class MatrixSigning:
     def __init__(self):
