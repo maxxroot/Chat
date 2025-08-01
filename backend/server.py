@@ -1286,7 +1286,7 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
     await manager.broadcast_to_room(room_id, broadcast_message)
     
     # Broadcast via Long Polling
-    await polling_manager.broadcast_message_to_room(room_id, broadcast_message, user_mxid)
+    await polling_manager.add_message_to_room(room_id, broadcast_message)
     
     logger.info(f"Message broadcasted to room {room_id} via WebSocket and Long Polling")
     
