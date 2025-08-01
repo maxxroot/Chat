@@ -516,7 +516,7 @@ function LandingPage({ onShowAuth }) {
           
           <div className="get-started">
             <h3>Commencer</h3>
-            <p>Créez un compte ou connectez-vous pour accéder à vos salles de discussion fédérées !</p>
+            <p>Créez un compte ou connectez-vous pour accéder à vos salles de discussion fédérées et vos contacts !</p>
             <button
               onClick={onShowAuth}
               className="auth-btn register"
