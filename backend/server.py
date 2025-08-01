@@ -232,25 +232,31 @@ async def create_room(request: CreateRoomRequest):
     result = await db.rooms.insert_one(room_data.dict())
     
     # Create room creation event
-    creation_event = Event(
-        event_id=MatrixID.event_id(),
-        room_id=room_id,
-        sender=creator_mxid,
-        event_type="m.room.create",
-        content={
+    event_dict = {
+        "event_id": MatrixID.event_id(),
+        "room_id": room_id,
+        "sender": creator_mxid,
+        "type": "m.room.create",
+        "content": {
             "creator": creator_mxid,
             "room_version": "1"
         },
-        origin_server_ts=datetime.utcnow()
-    )
-    
-    # Convert to dict and prepare for signing
-    event_dict = creation_event.dict(exclude={'id'})
-    event_dict["origin_server_ts"] = int(creation_event.origin_server_ts.timestamp() * 1000)
+        "origin_server_ts": int(time.time() * 1000)
+    }
     
     # Sign and store the event
     signed_event_dict = matrix_signing.sign_json(event_dict)
-    creation_event.signatures = signed_event_dict.get("signatures")
+    
+    # Create Event object for MongoDB storage
+    creation_event = Event(
+        event_id=event_dict["event_id"],
+        room_id=room_id,
+        sender=creator_mxid,
+        event_type="m.room.create",
+        content=event_dict["content"],
+        origin_server_ts=datetime.fromtimestamp(event_dict["origin_server_ts"] / 1000),
+        signatures=signed_event_dict.get("signatures")
+    )
     await db.events.insert_one(creation_event.dict())
     
     # Auto-join creator to room
