@@ -199,7 +199,7 @@ class ContactsMessagingTester:
                                     True,
                                     f"Successfully found user by username search",
                                     {
-                                        "search_query": "bob_secure",
+                                        "search_query": f"bob_secure_{self.suffix}",
                                         "found_user": {
                                             "mxid": found_user["mxid"],
                                             "display_name": found_user["display_name"],
