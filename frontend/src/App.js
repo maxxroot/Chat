@@ -568,13 +568,35 @@ function App() {
   
   return (
     <AuthProvider>
-      <ChatApp />
+      <MainAppContent setShowAuthModal={setShowAuthModal} />
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
     </AuthProvider>
   );
+}
+
+// Main Content Component
+function MainAppContent({ setShowAuthModal }) {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="loading-screen">
+          <h1>LibraChat</h1>
+          <p>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage onShowAuth={() => setShowAuthModal(true)} />;
+  }
+
+  return <ChatApp />;
 }
 
 export default App;
