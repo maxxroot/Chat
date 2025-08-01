@@ -106,7 +106,7 @@ class ContactsMessagingTester:
             # Register second user
             user2_data = {
                 "username": "bob_secure",
-                "email": "bob@librachat.local", 
+                "email": "bob@example.com", 
                 "password": "strongpass456",
                 "display_name": "Bob Security"
             }
