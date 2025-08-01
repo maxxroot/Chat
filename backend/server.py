@@ -1282,6 +1282,50 @@ async def get_user_rooms(current_user: dict = Depends(get_current_active_user)):
     
     return {"rooms": cleaned_rooms}
 
+@api_router.get("/rooms/{room_id}/members")
+async def get_room_members(room_id: str, current_user: dict = Depends(get_current_active_user)):
+    """Get members of a room"""
+    user_mxid = current_user["mxid"]
+    
+    # Check if room exists
+    room = await db.rooms.find_one({"room_id": room_id})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Check if current user is member of room
+    member = await db.room_members.find_one({
+        "room_id": room_id,
+        "user_mxid": user_mxid,
+        "membership": "join"
+    })
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+    
+    # Get all room members
+    members = await db.room_members.find({
+        "room_id": room_id,
+        "membership": "join"
+    }).to_list(None)
+    
+    # Get user details for each member
+    member_details = []
+    for member in members:
+        user = await db.users.find_one({"mxid": member["user_mxid"]})
+        if user:
+            member_details.append({
+                "mxid": member["user_mxid"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url"),
+                "power_level": member.get("power_level", 0),
+                "joined_at": member.get("joined_at").isoformat() if member.get("joined_at") else None
+            })
+    
+    return {
+        "room_id": room_id,
+        "members": member_details,
+        "member_count": len(member_details)
+    }
+
 # Federation API endpoints
 @app.get("/_matrix/federation/v1/version")
 async def federation_version():
