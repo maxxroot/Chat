@@ -501,12 +501,12 @@ function LandingPage({ onShowAuth }) {
               <p>Connectez-vous avec d'autres instances LibraChat utilisant les standards du protocole Matrix</p>
             </div>
             <div className="feature-card">
-              <h3>🔒 Future E2EE</h3>
-              <p>Support du chiffrement de bout en bout prévu avec Olm/Double Ratchet</p>
+              <h3>🔒 Chiffrement E2E</h3>
+              <p>Messages privés chiffrés de bout en bout avec RSA+AES</p>
             </div>
             <div className="feature-card">
-              <h3>🏠 Self-Hosted</h3>
-              <p>Exécutez votre propre instance avec un contrôle total sur vos données</p>
+              <h3>👥 Gestion des Contacts</h3>
+              <p>Recherchez et ajoutez des contacts locaux et fédérés</p>
             </div>
             <div className="feature-card">
               <h3>⚡ Real-time</h3>
