@@ -1026,7 +1026,7 @@ async def long_poll_messages(
     member = await db.room_members.find_one({
         "room_id": room_id,
         "user_mxid": user_mxid,
-        "state": "joined"
+        "membership": "join"
     })
     
     if not member:
