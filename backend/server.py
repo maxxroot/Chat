@@ -256,6 +256,103 @@ class MatrixSigning:
 # Initialize signing
 matrix_signing = MatrixSigning()
 
+# E2E Encryption utilities
+class E2EEncryption:
+    @staticmethod
+    def generate_rsa_keys():
+        """Generate RSA key pair for a user"""
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+        public_key = private_key.public_key()
+        
+        # Serialize keys to PEM format
+        private_pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+        
+        public_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
+        return private_pem.decode(), public_pem.decode()
+    
+    @staticmethod
+    def encrypt_message(message: str, recipient_public_key_pem: str) -> dict:
+        """Encrypt a message using hybrid RSA+AES encryption"""
+        # Generate random AES key and IV
+        aes_key = os.urandom(32)  # 256-bit key
+        iv = os.urandom(12)  # 96-bit nonce for GCM
+        
+        # Load recipient's public key
+        recipient_public_key = serialization.load_pem_public_key(
+            recipient_public_key_pem.encode(),
+            backend=default_backend()
+        )
+        
+        # Encrypt AES key with recipient's RSA public key
+        encrypted_aes_key = recipient_public_key.encrypt(
+            aes_key,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        
+        # Encrypt message with AES-GCM
+        cipher = Cipher(algorithms.AES(aes_key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(message.encode()) + encryptor.finalize()
+        auth_tag = encryptor.tag
+        
+        return {
+            'encrypted_content': base64.b64encode(ciphertext).decode(),
+            'encrypted_aes_key': base64.b64encode(encrypted_aes_key).decode(),
+            'iv': base64.b64encode(iv).decode(),
+            'auth_tag': base64.b64encode(auth_tag).decode()
+        }
+    
+    @staticmethod
+    def decrypt_message(encrypted_content: str, encrypted_aes_key: str, 
+                       iv: str, auth_tag: str, private_key_pem: str) -> str:
+        """Decrypt a message using hybrid RSA+AES decryption"""
+        # Load private key
+        private_key = serialization.load_pem_private_key(
+            private_key_pem.encode(),
+            password=None,
+            backend=default_backend()
+        )
+        
+        # Decrypt AES key with RSA private key
+        aes_key = private_key.decrypt(
+            base64.b64decode(encrypted_aes_key),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        
+        # Decrypt message with AES-GCM
+        cipher = Cipher(
+            algorithms.AES(aes_key), 
+            modes.GCM(base64.b64decode(iv), base64.b64decode(auth_tag)), 
+            backend=default_backend()
+        )
+        decryptor = cipher.decryptor()
+        decrypted = decryptor.update(base64.b64decode(encrypted_content)) + decryptor.finalize()
+        
+        return decrypted.decode()
+
+# Initialize E2E encryption
+e2e_crypto = E2EEncryption()
+
 # Authentication utilities
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
