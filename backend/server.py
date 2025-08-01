@@ -693,10 +693,20 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
 async def get_room_messages(room_id: str, limit: int = 50, current_user: dict = Depends(get_current_active_user)):
     """Get messages from a room"""
     user_mxid = current_user["mxid"]
+    
     # Check if room exists
     room = await db.rooms.find_one({"room_id": room_id})
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Check if user is member of the room
+    membership = await db.room_members.find_one({
+        "room_id": room_id,
+        "user_mxid": user_mxid,
+        "membership": "join"
+    })
+    if not membership:
+        raise HTTPException(status_code=403, detail="Access denied to this room")
     
     # Get recent messages
     messages_cursor = db.events.find({
