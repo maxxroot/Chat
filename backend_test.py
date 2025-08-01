@@ -28,6 +28,9 @@ class ContactsMessagingTester:
         self.user2_mxid = None
         self.user1_data = None
         self.user2_data = None
+        # Generate unique suffix for this test run
+        import random
+        self.suffix = random.randint(1000, 9999)
     
     def log_test(self, test_name: str, success: bool, details: str, response_data: Any = None):
         """Log test results"""
