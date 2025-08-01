@@ -13,6 +13,7 @@ const InviteUsersModal = ({ isOpen, onClose, roomId, roomName }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [members, setMembers] = useState([]);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && roomId) {
