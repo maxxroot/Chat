@@ -159,7 +159,10 @@ class MatrixSigning:
         signature = self.signing_key.sign(canonical)
         signature_base64 = base64.b64encode(signature).decode()
         
+        # Initialize signatures if not present
         if "signatures" not in signed:
+            signed["signatures"] = {}
+        if signed["signatures"] is None:
             signed["signatures"] = {}
         if SERVER_NAME not in signed["signatures"]:
             signed["signatures"][SERVER_NAME] = {}
