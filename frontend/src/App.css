@@ -1641,3 +1641,355 @@ body {
 .auth-btn.register:hover {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
+
+/* Updated Chat Header with Actions */
+.chat-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #333;
+  background: rgba(20, 20, 20, 0.8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.room-info h2 {
+  color: #fff;
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.room-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.invite-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #5865f2;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.invite-btn:hover {
+  background: #4752c4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+}
+
+.invite-icon {
+  font-size: 1rem;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+/* Invite Modal */
+.invite-modal {
+  background: #2f3136;
+  border: 1px solid #40444b;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #40444b;
+  background: #36393f;
+}
+
+.modal-header h3 {
+  color: #dcddde;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #8e9297;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  color: #dcddde;
+  background: #40444b;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.search-section {
+  margin-bottom: 1rem;
+}
+
+/* Selected Users */
+.selected-users {
+  background: #36393f;
+  border: 1px solid #40444b;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.selected-users h4 {
+  color: #dcddde;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.selected-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.selected-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background: #40444b;
+  border-radius: 6px;
+}
+
+.remove-user-btn {
+  background: none;
+  border: none;
+  color: #ed4245;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.remove-user-btn:hover {
+  background: #ed4245;
+  color: white;
+}
+
+/* Search Results in Modal */
+.search-results-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #40444b;
+  border-radius: 6px;
+  background: #36393f;
+}
+
+.select-user-btn {
+  background: #3ba55d;
+  border: none;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.select-user-btn:hover {
+  background: #2d7d32;
+}
+
+.select-user-btn.selected {
+  background: #ed4245;
+}
+
+.select-user-btn.selected:hover {
+  background: #c23616;
+}
+
+.already-member {
+  color: #8e9297;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* Current Members */
+.current-members {
+  background: #36393f;
+  border: 1px solid #40444b;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.current-members h4 {
+  color: #dcddde;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: #40444b;
+  border-radius: 6px;
+}
+
+.member-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-name {
+  color: #dcddde;
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-mxid {
+  color: #72767d;
+  font-size: 0.8rem;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.self-badge {
+  background: #5865f2;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* Modal Footer */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #40444b;
+  background: #36393f;
+}
+
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  background: #40444b;
+  border: none;
+  border-radius: 6px;
+  color: #dcddde;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #484c52;
+}
+
+.btn-primary {
+  padding: 0.75rem 1.5rem;
+  background: #5865f2;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #4752c4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading States */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  color: #8e9297;
+  font-size: 0.9rem;
+}
+
+/* Responsive for Modal */
+@media (max-width: 768px) {
+  .invite-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 1rem;
+  }
+  
+  .room-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .invite-btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
