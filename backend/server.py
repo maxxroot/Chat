@@ -976,6 +976,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 @api_router.get("/rooms/{room_id}/poll")
 async def long_poll_messages(
     room_id: str, 
+    since: float = None,
     timeout: int = 30, 
     current_user: dict = Depends(get_current_active_user)
 ):
@@ -992,13 +993,34 @@ async def long_poll_messages(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this room")
     
-    # Wait for messages using long polling
-    messages = await polling_manager.wait_for_messages(room_id, user_mxid, timeout)
+    # If no 'since' timestamp provided, use current time minus a small buffer
+    if since is None:
+        since = time.time() - 1
     
+    # Start time for timeout
+    start_time = time.time()
+    
+    # Poll for new messages
+    while time.time() - start_time < timeout:
+        messages = await polling_manager.get_messages_since(room_id, since)
+        
+        if messages:
+            return {
+                "messages": messages,
+                "room_id": room_id,
+                "timestamp": time.time(),
+                "timeout_reached": False
+            }
+        
+        # Wait a short time before checking again
+        await asyncio.sleep(0.5)
+    
+    # Timeout reached
     return {
-        "messages": messages,
+        "messages": [],
         "room_id": room_id,
-        "timeout_reached": len(messages) == 0
+        "timestamp": time.time(),
+        "timeout_reached": True
     }
 
 # Room Creation and Management
