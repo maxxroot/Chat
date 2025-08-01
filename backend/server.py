@@ -297,8 +297,12 @@ async def join_room(room_id: str):
             origin_server_ts=datetime.utcnow()
         )
         
+        # Convert to dict and prepare for signing
+        event_dict = join_event.dict(exclude={'id'})
+        event_dict["origin_server_ts"] = int(join_event.origin_server_ts.timestamp() * 1000)
+        
         # Sign the event
-        signed_event_dict = matrix_signing.sign_json(join_event.dict(exclude={'id'}))
+        signed_event_dict = matrix_signing.sign_json(event_dict)
         join_event.signatures = signed_event_dict.get("signatures")
         await db.events.insert_one(join_event.dict())
         
