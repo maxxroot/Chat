@@ -293,26 +293,33 @@ async def join_room(room_id: str):
     
     if not existing_member:
         # Create join event
-        join_event = Event(
-            event_id=MatrixID.event_id(),
-            room_id=room_id,
-            sender=user_mxid,
-            event_type="m.room.member",
-            content={
+        event_dict = {
+            "event_id": MatrixID.event_id(),
+            "room_id": room_id,
+            "sender": user_mxid,
+            "type": "m.room.member",
+            "content": {
                 "membership": "join",
                 "displayname": "Admin User"
             },
-            state_key=user_mxid,
-            origin_server_ts=datetime.utcnow()
-        )
-        
-        # Convert to dict and prepare for signing
-        event_dict = join_event.dict(exclude={'id'})
-        event_dict["origin_server_ts"] = int(join_event.origin_server_ts.timestamp() * 1000)
+            "state_key": user_mxid,
+            "origin_server_ts": int(time.time() * 1000)
+        }
         
         # Sign the event
         signed_event_dict = matrix_signing.sign_json(event_dict)
-        join_event.signatures = signed_event_dict.get("signatures")
+        
+        # Create Event object for MongoDB storage
+        join_event = Event(
+            event_id=event_dict["event_id"],
+            room_id=room_id,
+            sender=user_mxid,
+            event_type="m.room.member",
+            content=event_dict["content"],
+            state_key=user_mxid,
+            origin_server_ts=datetime.fromtimestamp(event_dict["origin_server_ts"] / 1000),
+            signatures=signed_event_dict.get("signatures")
+        )
         await db.events.insert_one(join_event.dict())
         
         # Add membership record
