@@ -1,4 +1,4 @@
-fastapi==0.110.1
+fastapi[all]==0.110.1
 uvicorn[standard]==0.25.0
 motor==3.3.1
 pymongo==4.5.0
@@ -7,14 +7,14 @@ python-dotenv>=1.0.1
 pydantic>=2.6.4
 email-validator>=2.2.0
 pyjwt>=2.10.1
-passlib>=1.7.4
+passlib[bcrypt]>=1.7.4
 tzdata>=2024.2
 pytest>=8.0.0
 black>=24.1.1
 isort>=5.13.2
 flake8>=7.0.0
 mypy>=1.8.0
-python-jose>=3.3.0
+python-jose[cryptography]>=3.3.0
 requests>=2.31.0
 httpx>=0.26.0
 python-multipart>=0.0.9
@@ -24,3 +24,4 @@ unpaddedbase64>=2.1.0
 PyNaCl>=1.5.0
 websockets>=15.0.0
 wsproto>=1.2.0
+bcrypt>=4.0.0
