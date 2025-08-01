@@ -173,6 +173,42 @@ class MatrixSigning:
 # Initialize signing
 matrix_signing = MatrixSigning()
 
+# WebSocket Connection Manager
+class ConnectionManager:
+    def __init__(self):
+        # Dictionary to store active connections by room_id
+        self.room_connections: Dict[str, List[WebSocket]] = {}
+        
+    async def connect(self, websocket: WebSocket, room_id: str):
+        await websocket.accept()
+        if room_id not in self.room_connections:
+            self.room_connections[room_id] = []
+        self.room_connections[room_id].append(websocket)
+        logger.info(f"WebSocket connected to room {room_id}. Total connections: {len(self.room_connections[room_id])}")
+        
+    def disconnect(self, websocket: WebSocket, room_id: str):
+        if room_id in self.room_connections:
+            self.room_connections[room_id].remove(websocket)
+            if len(self.room_connections[room_id]) == 0:
+                del self.room_connections[room_id]
+        logger.info(f"WebSocket disconnected from room {room_id}")
+        
+    async def broadcast_to_room(self, room_id: str, message: dict):
+        if room_id in self.room_connections:
+            disconnected_websockets = []
+            for websocket in self.room_connections[room_id]:
+                try:
+                    await websocket.send_json(message)
+                except:
+                    disconnected_websockets.append(websocket)
+            
+            # Remove disconnected websockets
+            for websocket in disconnected_websockets:
+                self.disconnect(websocket, room_id)
+
+# Initialize connection manager
+manager = ConnectionManager()
+
 # Create the main app
 app = FastAPI(title="LibraChat Federation Server")
 api_router = APIRouter(prefix="/api")
