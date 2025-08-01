@@ -14,10 +14,10 @@ function App() {
   const [newRoomName, setNewRoomName] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
-  // Fetch server info on startup
+  // Fetch user's rooms on startup
   useEffect(() => {
     fetchServerInfo();
-    fetchPublicRooms();
+    fetchUserRooms();
   }, []);
 
   const fetchServerInfo = async () => {
