@@ -498,10 +498,10 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 
 # Room Creation and Management
 @api_router.post("/createRoom")
-async def create_room(request: CreateRoomRequest):
+async def create_room(request: CreateRoomRequest, current_user: dict = Depends(get_current_active_user)):
     """Create a new Matrix room"""
     room_id = MatrixID.room_id()
-    creator_mxid = MatrixID.user_id("admin")
+    creator_mxid = current_user["mxid"]
     
     # Create room document
     room_data = Room(
