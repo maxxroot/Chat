@@ -130,7 +130,7 @@ function ChatApp() {
           // Timeout is normal, immediately restart polling
           console.log('Long polling timeout, restarting...');
           if (isPollingRef.current && currentRoom?.room_id === roomId) {
-            setImmediate(() => poll());
+            setTimeout(() => poll(), 0);
           }
         } else {
           // Other errors - set error status and retry after delay
