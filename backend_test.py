@@ -772,7 +772,7 @@ class ContactsMessagingTester:
                 self.log_test(
                     "Authentication Required",
                     False,
-                    f"Some endpoints don't require authentication: {auth_failures}/{len(endpoints_to_test)} returned 401",
+                    f"Some endpoints don't require authentication: {auth_failures}/{len(endpoints_to_test)} returned 401/403",
                     {
                         "endpoints_tested": len(endpoints_to_test),
                         "auth_failures": auth_failures
