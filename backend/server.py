@@ -249,7 +249,7 @@ async def get_server_keys():
     return signed_keys
 
 # WebSocket endpoint for real-time chat
-@app.websocket("/ws/{room_id}")
+@api_router.websocket("/ws/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     await manager.connect(websocket, room_id)
     try:
