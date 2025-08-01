@@ -116,7 +116,7 @@ const InviteUsersModal = ({ isOpen, onClose, roomId, roomName }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content invite-modal">
+      <div className="invite-modal">
         <div className="modal-header">
           <h3>Invite Users to #{roomName}</h3>
           <button onClick={onClose} className="modal-close">×</button>
