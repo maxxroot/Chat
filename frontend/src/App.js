@@ -34,6 +34,7 @@ function ChatApp() {
   // Long polling référence
   const pollingRef = useRef(null);
   const isPollingRef = useRef(false);
+  const lastTimestampRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
 
