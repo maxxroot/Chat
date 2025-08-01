@@ -64,7 +64,7 @@ function App() {
     disconnectWebSocket();
     
     try {
-      const wsUrl = `${WS_URL}/ws/${roomId}`;
+      const wsUrl = `${WS_URL}/api/ws/${roomId}`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       ws.current = new WebSocket(wsUrl);
