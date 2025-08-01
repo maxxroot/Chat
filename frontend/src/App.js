@@ -474,6 +474,14 @@ function ChatApp() {
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
       />
+      
+      {/* Invite Users Modal */}
+      <InviteUsersModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        roomId={currentRoom?.room_id}
+        roomName={currentRoom?.name}
+      />
     </div>
   );
 }
