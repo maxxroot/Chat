@@ -762,7 +762,7 @@ class ContactsMessagingTester:
                 self.log_test(
                     "Authentication Required",
                     True,
-                    f"All {len(endpoints_to_test)} endpoints properly require authentication (HTTP 401)",
+                    f"All {len(endpoints_to_test)} endpoints properly require authentication (HTTP 401/403)",
                     {
                         "endpoints_tested": len(endpoints_to_test),
                         "auth_failures": auth_failures
