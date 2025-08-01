@@ -34,8 +34,17 @@ DB_NAME = os.environ['DB_NAME']
 SERVER_NAME = os.environ['SERVER_NAME']
 SIGNING_KEY_SEED = os.environ['SIGNING_KEY_SEED']
 
+# Authentication settings
+SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
 # Matrix ID utilities
 class MatrixID:
