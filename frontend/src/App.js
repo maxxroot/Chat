@@ -375,21 +375,25 @@ function App() {
                       <div className="room-specs">
                         <div>Room ID: <code>{currentRoom.room_id}</code></div>
                         <div>Server: <code>{serverInfo?.server_name}</code></div>
+                        <div>WebSocket: <span className={getWsConnectionStatusColor()}>{wsConnectionStatus}</span></div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <div key={message.event_id} className="message">
-                      <div className="message-header">
-                        <span className="sender">{message.sender}</span>
-                        <span className="timestamp">
-                          {new Date(message.origin_server_ts).toLocaleTimeString()}
-                        </span>
+                  <>
+                    {messages.map((message) => (
+                      <div key={message.event_id} className="message">
+                        <div className="message-header">
+                          <span className="sender">{message.sender}</span>
+                          <span className="timestamp">
+                            {new Date(message.origin_server_ts).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <div className="message-content">{message.content.body}</div>
                       </div>
-                      <div className="message-content">{message.content.body}</div>
-                    </div>
-                  ))
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </>
                 )}
               </div>
               
