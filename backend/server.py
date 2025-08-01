@@ -733,9 +733,9 @@ async def get_room_messages(room_id: str, limit: int = 50):
     }
 
 @api_router.get("/rooms")
-async def get_user_rooms():
+async def get_user_rooms(current_user: dict = Depends(get_current_active_user)):
     """Get rooms for current user"""
-    user_mxid = MatrixID.user_id("admin")
+    user_mxid = current_user["mxid"]
     
     # Get user's room memberships
     memberships = await db.room_members.find({
