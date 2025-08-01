@@ -449,91 +449,51 @@ manager = ConnectionManager()
 # Long Polling Manager for HTTP-based real-time communication
 class LongPollingManager:
     def __init__(self):
-        # Dictionary to store message queues by room_id and user_id
-        self.user_queues: Dict[str, Dict[str, Queue]] = {}  # {room_id: {user_id: queue}}
-        self.user_events: Dict[str, Dict[str, Event]] = {}  # {room_id: {user_id: event}}
+        # Store pending messages by room_id with timestamps
+        self.pending_messages: Dict[str, List[dict]] = {}
+        self.lock = asyncio.Lock()
         
-    async def add_user_to_room(self, room_id: str, user_id: str):
-        """Add a user to a room for long polling"""
-        if room_id not in self.user_queues:
-            self.user_queues[room_id] = {}
-            self.user_events[room_id] = {}
+    async def add_message_to_room(self, room_id: str, message: dict):
+        """Add a message to a room's pending messages"""
+        async with self.lock:
+            if room_id not in self.pending_messages:
+                self.pending_messages[room_id] = []
             
-        if user_id not in self.user_queues[room_id]:
-            self.user_queues[room_id][user_id] = Queue()
-            self.user_events[room_id][user_id] = Event()
+            # Add timestamp to message
+            message_with_timestamp = {
+                **message,
+                "polling_timestamp": time.time()
+            }
             
-        logger.info(f"User {user_id} added to long polling for room {room_id}")
-        
-    async def remove_user_from_room(self, room_id: str, user_id: str):
-        """Remove a user from a room's long polling"""
-        if room_id in self.user_queues and user_id in self.user_queues[room_id]:
-            # Clear the queue and set the event
-            while not self.user_queues[room_id][user_id].empty():
-                try:
-                    self.user_queues[room_id][user_id].get_nowait()
-                except:
-                    break
-            self.user_events[room_id][user_id].set()
+            self.pending_messages[room_id].append(message_with_timestamp)
             
-            del self.user_queues[room_id][user_id]
-            del self.user_events[room_id][user_id]
+            # Keep only recent messages (last 100 or 5 minutes)
+            cutoff_time = time.time() - 300  # 5 minutes
+            self.pending_messages[room_id] = [
+                msg for msg in self.pending_messages[room_id]
+                if msg.get("polling_timestamp", 0) > cutoff_time
+            ][-100:]  # Keep last 100 messages
             
-            # Clean up empty room
-            if not self.user_queues[room_id]:
-                del self.user_queues[room_id]
-                del self.user_events[room_id]
-                
-        logger.info(f"User {user_id} removed from long polling for room {room_id}")
-        
-    async def broadcast_message_to_room(self, room_id: str, message: dict, sender_user_id: str = None):
-        """Broadcast a message to all users in a room (except sender)"""
-        if room_id not in self.user_queues:
-            return
+            logger.info(f"Added message to room {room_id}, total pending: {len(self.pending_messages[room_id])}")
+    
+    async def get_messages_since(self, room_id: str, since_timestamp: float = None) -> List[dict]:
+        """Get messages for a room since a specific timestamp"""
+        async with self.lock:
+            if room_id not in self.pending_messages:
+                return []
             
-        for user_id, queue in self.user_queues[room_id].items():
-            # Don't send message back to sender
-            if sender_user_id and user_id == sender_user_id:
-                continue
-                
-            try:
-                await queue.put(message)
-                self.user_events[room_id][user_id].set()
-                logger.info(f"Message queued for user {user_id} in room {room_id}")
-            except Exception as e:
-                logger.error(f"Error queuing message for user {user_id}: {e}")
-                
-    async def wait_for_messages(self, room_id: str, user_id: str, timeout: int = 30) -> List[dict]:
-        """Wait for messages for a specific user in a room"""
-        # Ensure user is added to the room
-        await self.add_user_to_room(room_id, user_id)
-        
-        messages = []
-        queue = self.user_queues[room_id][user_id]
-        event = self.user_events[room_id][user_id]
-        
-        # Clear the event before waiting
-        event.clear()
-        
-        try:
-            # Wait for messages or timeout
-            await asyncio.wait_for(event.wait(), timeout=timeout)
+            # If no timestamp provided, return all recent messages
+            if since_timestamp is None:
+                since_timestamp = time.time() - 1  # Last 1 second
             
-            # Collect all available messages
-            while not queue.empty():
-                try:
-                    message = queue.get_nowait()
-                    messages.append(message)
-                except:
-                    break
-                    
-        except asyncio.TimeoutError:
-            # Timeout reached, return empty list
-            pass
-        except Exception as e:
-            logger.error(f"Error in wait_for_messages: {e}")
+            # Return messages newer than the timestamp
+            recent_messages = [
+                msg for msg in self.pending_messages[room_id]
+                if msg.get("polling_timestamp", 0) > since_timestamp
+            ]
             
-        return messages
+            logger.info(f"Retrieved {len(recent_messages)} messages for room {room_id} since {since_timestamp}")
+            return recent_messages
 
 # Initialize long polling manager
 polling_manager = LongPollingManager()
