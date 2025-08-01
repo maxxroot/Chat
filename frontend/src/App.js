@@ -245,6 +245,14 @@ function App() {
     }
   };
 
+  const getWsConnectionStatusColor = () => {
+    switch (wsConnectionStatus) {
+      case "connected": return "text-green-400";
+      case "error": return "text-red-400";
+      default: return "text-yellow-400";
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Header with Federation Info */}
