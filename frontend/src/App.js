@@ -212,12 +212,24 @@ function ChatApp() {
       // Clear messages when switching rooms
       setMessages([]);
       setCurrentRoom(room);
+      setChatMode('room');
+      setSelectedContact(null);
       
       // Load existing messages
       await loadRoomMessages(room.room_id);
     } catch (error) {
       console.error("Failed to join room:", error);
     }
+  };
+
+  const handleSelectContact = (contact) => {
+    setSelectedContact(contact);
+    setChatMode('private');
+    setCurrentRoom(null);
+    setMessages([]);
+    
+    // Disconnect from room WebSocket
+    disconnectWebSocket();
   };
 
   const loadRoomMessages = async (roomId) => {
