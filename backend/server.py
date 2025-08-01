@@ -1287,7 +1287,7 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
     )
     await db.events.insert_one(message_event.dict())
     
-    # Broadcast message to all connected clients in the room
+    # Broadcast message to all connected clients in the room (WebSocket)
     broadcast_message = {
         "type": "new_message",
         "data": {
@@ -1300,8 +1300,13 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
         }
     }
     
+    # Broadcast via WebSocket
     await manager.broadcast_to_room(room_id, broadcast_message)
-    logger.info(f"Message broadcasted to room {room_id}")
+    
+    # Broadcast via Long Polling
+    await polling_manager.broadcast_message_to_room(room_id, broadcast_message, user_mxid)
+    
+    logger.info(f"Message broadcasted to room {room_id} via WebSocket and Long Polling")
     
     return {
         "event_id": message_event.event_id,
