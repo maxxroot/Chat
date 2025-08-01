@@ -20,7 +20,6 @@ function ChatApp() {
   const [newRoomName, setNewRoomName] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [wsConnectionStatus, setWsConnectionStatus] = useState("disconnected");
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
   // WebSocket référence
