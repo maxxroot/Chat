@@ -355,25 +355,32 @@ async def send_message(room_id: str, message: SendMessageRequest):
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this room")
     
-    message_event = Event(
-        event_id=MatrixID.event_id(),
-        room_id=room_id,
-        sender=user_mxid,
-        event_type="m.room.message",
-        content={
+    # Create message event
+    event_dict = {
+        "event_id": MatrixID.event_id(),
+        "room_id": room_id,
+        "sender": user_mxid,
+        "type": "m.room.message",
+        "content": {
             "msgtype": message.msgtype,
             "body": message.body
         },
-        origin_server_ts=datetime.utcnow()
-    )
-    
-    # Convert to dict and prepare for signing
-    event_dict = message_event.dict(exclude={'id'})
-    event_dict["origin_server_ts"] = int(message_event.origin_server_ts.timestamp() * 1000)
+        "origin_server_ts": int(time.time() * 1000)
+    }
     
     # Sign the event
     signed_event_dict = matrix_signing.sign_json(event_dict)
-    message_event.signatures = signed_event_dict.get("signatures")
+    
+    # Create Event object for MongoDB storage
+    message_event = Event(
+        event_id=event_dict["event_id"],
+        room_id=room_id,
+        sender=user_mxid,
+        event_type="m.room.message",
+        content=event_dict["content"],
+        origin_server_ts=datetime.fromtimestamp(event_dict["origin_server_ts"] / 1000),
+        signatures=signed_event_dict.get("signatures")
+    )
     await db.events.insert_one(message_event.dict())
     
     return {
