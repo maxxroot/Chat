@@ -77,6 +77,39 @@ class User(BaseModel):
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+# Authentication Models
+class UserRegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    display_name: Optional[str] = None
+
+class UserLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class UserProfile(BaseModel):
+    mxid: str
+    localpart: str
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    email: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+
+class UserUpdateRequest(BaseModel):
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    user: UserProfile
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
 class Room(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     room_id: str  # !room:domain.tld
