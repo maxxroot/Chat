@@ -559,9 +559,9 @@ async def create_room(request: CreateRoomRequest, current_user: dict = Depends(g
     }
 
 @api_router.post("/rooms/{room_id}/join")
-async def join_room(room_id: str):
+async def join_room(room_id: str, current_user: dict = Depends(get_current_active_user)):
     """Join a Matrix room"""
-    user_mxid = MatrixID.user_id("admin")  # For now, default user
+    user_mxid = current_user["mxid"]
     
     # Check if room exists
     room = await db.rooms.find_one({"room_id": room_id})
