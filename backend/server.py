@@ -26,6 +26,8 @@ import httpx
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import bcrypt
+import asyncio
+from asyncio import Event, Queue
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
