@@ -274,6 +274,12 @@ function App() {
                   <div className="status-dot"></div>
                   <span>{connectionStatus}</span>
                 </div>
+                {currentRoom && (
+                  <div className={`connection-status ${getWsConnectionStatusColor()}`}>
+                    <div className="status-dot"></div>
+                    <span>WS: {wsConnectionStatus}</span>
+                  </div>
+                )}
                 <div className="federation-info">
                   <span className="label">Federation:</span>
                   <span className="value">{serverInfo.federation_enabled ? "Enabled" : "Disabled"}</span>
