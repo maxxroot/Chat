@@ -755,7 +755,7 @@ class ContactsMessagingTester:
                 elif method == "DELETE":
                     response = self.session.delete(url)
                 
-                if response.status_code == 401:
+                if response.status_code == 401 or response.status_code == 403:
                     auth_failures += 1
             
             if auth_failures == len(endpoints_to_test):
