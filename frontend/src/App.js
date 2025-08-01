@@ -66,6 +66,9 @@ function App() {
       
       setRooms([...rooms, newRoom]);
       setNewRoomName("");
+      
+      // Refresh rooms list to get the created room
+      fetchUserRooms();
     } catch (error) {
       console.error("Failed to create room:", error);
     }
