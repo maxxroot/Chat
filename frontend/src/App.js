@@ -32,8 +32,9 @@ function ChatApp() {
   // States for invite modal
   const [showInviteModal, setShowInviteModal] = useState(false);
   
-  // WebSocket référence
-  const ws = useRef(null);
+  // Long polling référence
+  const pollingRef = useRef(null);
+  const isPollingRef = useRef(false);
   const reconnectTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
 
