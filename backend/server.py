@@ -433,6 +433,22 @@ async def send_message(room_id: str, message: SendMessageRequest):
     )
     await db.events.insert_one(message_event.dict())
     
+    # Broadcast message to all connected clients in the room
+    broadcast_message = {
+        "type": "new_message",
+        "data": {
+            "event_id": message_event.event_id,
+            "room_id": room_id,
+            "sender": user_mxid,
+            "content": message_event.content,
+            "origin_server_ts": event_dict["origin_server_ts"],
+            "timestamp": datetime.fromtimestamp(event_dict["origin_server_ts"] / 1000).isoformat()
+        }
+    }
+    
+    await manager.broadcast_to_room(room_id, broadcast_message)
+    logger.info(f"Message broadcasted to room {room_id}")
+    
     return {
         "event_id": message_event.event_id,
         "room_id": room_id,
