@@ -228,15 +228,9 @@ function App() {
         }
       );
       
-      // Add message to local state
-      const message = {
-        event_id: response.data.event_id,
-        sender: "@admin:librachat.local",
-        content: { body: newMessage },
-        origin_server_ts: Date.now()
-      };
+      console.log('Message sent:', response.data);
       
-      setMessages([...messages, message]);
+      // Clear the input - message will be added via WebSocket
       setNewMessage("");
     } catch (error) {
       console.error("Failed to send message:", error);
