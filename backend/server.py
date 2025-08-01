@@ -142,9 +142,22 @@ class Event(BaseModel):
     sender: str
     event_type: str  # m.room.message, m.room.member, etc.
     content: Dict[str, Any]
+    mentions: Optional[List[str]] = []  # List of mentioned user mxids
     state_key: Optional[str] = None
     origin_server_ts: datetime = Field(default_factory=datetime.utcnow)
     signatures: Optional[Dict[str, Dict[str, str]]] = None
+
+class Notification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    notification_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_mxid: str  # User who receives the notification
+    room_id: str
+    event_id: str
+    sender_mxid: str  # User who mentioned/triggered the notification
+    notification_type: str  # "mention", "reply", etc.
+    content: Dict[str, Any]  # Message content or notification data
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ServerKey(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
