@@ -225,8 +225,8 @@ function ChatApp() {
     setCurrentRoom(null);
     setMessages([]);
     
-    // Disconnect from room WebSocket
-    disconnectWebSocket();
+    // Stop long polling from room
+    stopLongPolling();
   };
 
   const loadRoomMessages = async (roomId) => {
