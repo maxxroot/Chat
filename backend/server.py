@@ -690,8 +690,9 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
     }
 
 @api_router.get("/rooms/{room_id}/messages")
-async def get_room_messages(room_id: str, limit: int = 50):
+async def get_room_messages(room_id: str, limit: int = 50, current_user: dict = Depends(get_current_active_user)):
     """Get messages from a room"""
+    user_mxid = current_user["mxid"]
     # Check if room exists
     room = await db.rooms.find_one({"room_id": room_id})
     if not room:
