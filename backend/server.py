@@ -1012,6 +1012,35 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
         manager.disconnect(websocket, room_id)
         logger.info(f"WebSocket disconnected from room {room_id}")
 
+# Long Polling endpoint for real-time chat (HTTP alternative to WebSocket)
+@api_router.get("/rooms/{room_id}/poll")
+async def long_poll_messages(
+    room_id: str, 
+    timeout: int = 30, 
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Long polling endpoint to receive real-time messages in a room"""
+    user_mxid = current_user["mxid"]
+    
+    # Check if user is member of the room
+    member = await db.room_members.find_one({
+        "room_id": room_id,
+        "user_mxid": user_mxid,
+        "state": "joined"
+    })
+    
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+    
+    # Wait for messages using long polling
+    messages = await polling_manager.wait_for_messages(room_id, user_mxid, timeout)
+    
+    return {
+        "messages": messages,
+        "room_id": room_id,
+        "timeout_reached": len(messages) == 0
+    }
+
 # Room Creation and Management
 @api_router.post("/createRoom")
 async def create_room(request: CreateRoomRequest, current_user: dict = Depends(get_current_active_user)):
