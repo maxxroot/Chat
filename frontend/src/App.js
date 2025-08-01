@@ -347,60 +347,23 @@ function ChatApp() {
       </div>
 
       <div className="main-content">
-        {/* Sidebar - Rooms */}
-        <div className="sidebar">
-          <div className="sidebar-header">
-            <h3>Rooms</h3>
-            <div className="create-room-section">
-              <input
-                type="text"
-                placeholder="New room name"
-                value={newRoomName}
-                onChange={(e) => setNewRoomName(e.target.value)}
-                className="room-input"
-                onKeyPress={(e) => e.key === 'Enter' && createRoom()}
-              />
-              <button onClick={createRoom} className="create-btn">+</button>
-            </div>
-          </div>
-          
-          <div className="rooms-list">
-            {rooms.map((room) => (
-              <div
-                key={room.room_id}
-                className={`room-item ${currentRoom?.room_id === room.room_id ? 'active' : ''}`}
-                onClick={() => joinRoom(room)}
-              >
-                <div className="room-name">#{room.name}</div>
-                <div className="room-id">{room.room_id}</div>
-                {room.topic && <div className="room-topic">{room.topic}</div>}
-              </div>
-            ))}
-          </div>
-          
-          {/* Matrix Federation Info */}
-          <div className="federation-panel">
-            <h4>Matrix Federation</h4>
-            <div className="federation-details">
-              <div className="detail-item">
-                <span className="label">Homeserver:</span>
-                <span className="value">{serverInfo?.server_name}</span>
-              </div>
-              <div className="detail-item">
-                <span className="label">User ID:</span>
-                <span className="value">{user?.mxid}</span>
-              </div>
-              <div className="detail-item">
-                <span className="label">Signing Key:</span>
-                <span className="value key-display">{serverInfo?.verify_key?.substring(0, 16)}...</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Discord-like Sidebar */}
+        <DiscordSidebar
+          rooms={rooms}
+          currentRoom={currentRoom}
+          onJoinRoom={joinRoom}
+          onCreateRoom={createRoom}
+          newRoomName={newRoomName}
+          setNewRoomName={setNewRoomName}
+          selectedContact={selectedContact}
+          onSelectContact={handleSelectContact}
+        />
 
         {/* Chat Area */}
         <div className="chat-area">
-          {currentRoom ? (
+          {chatMode === 'private' ? (
+            <PrivateChat contact={selectedContact} />
+          ) : currentRoom ? (
             <>
               <div className="chat-header">
                 <h2>#{currentRoom.name}</h2>
