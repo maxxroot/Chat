@@ -26,6 +26,114 @@ function App() {
     fetchUserRooms();
   }, []);
 
+  // WebSocket connection management
+  useEffect(() => {
+    if (currentRoom) {
+      connectWebSocket(currentRoom.room_id);
+    }
+    
+    return () => {
+      disconnectWebSocket();
+    };
+  }, [currentRoom]);
+
+  // Cleanup WebSocket on component unmount
+  useEffect(() => {
+    return () => {
+      disconnectWebSocket();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const connectWebSocket = (roomId) => {
+    if (!roomId) return;
+    
+    // Close existing connection
+    disconnectWebSocket();
+    
+    try {
+      const wsUrl = `${WS_URL}/ws/${roomId}`;
+      console.log('Connecting to WebSocket:', wsUrl);
+      
+      ws.current = new WebSocket(wsUrl);
+      
+      ws.current.onopen = () => {
+        console.log('WebSocket connected to room:', roomId);
+        setWsConnectionStatus("connected");
+        
+        // Clear any reconnection timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+      };
+      
+      ws.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received WebSocket message:', data);
+          
+          // Add the new message to the messages state
+          if (data.type === 'message' && data.content) {
+            const newMessage = {
+              event_id: data.event_id,
+              sender: data.sender,
+              content: data.content,
+              origin_server_ts: data.origin_server_ts || Date.now()
+            };
+            
+            setMessages(prevMessages => {
+              // Check if message already exists to avoid duplicates
+              const messageExists = prevMessages.some(msg => msg.event_id === newMessage.event_id);
+              if (messageExists) return prevMessages;
+              
+              return [...prevMessages, newMessage];
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+      
+      ws.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setWsConnectionStatus("error");
+      };
+      
+      ws.current.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        setWsConnectionStatus("disconnected");
+        
+        // Attempt to reconnect after 3 seconds if not intentionally closed
+        if (event.code !== 1000 && currentRoom) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting to reconnect WebSocket...');
+            connectWebSocket(roomId);
+          }, 3000);
+        }
+      };
+      
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      setWsConnectionStatus("error");
+    }
+  };
+
+  const disconnectWebSocket = () => {
+    if (ws.current) {
+      ws.current.close(1000, 'Intentional disconnect');
+      ws.current = null;
+    }
+    setWsConnectionStatus("disconnected");
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+  };
+
   const fetchServerInfo = async () => {
     try {
       const response = await axios.get(`${API}/server/info`);
