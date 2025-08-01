@@ -10,7 +10,6 @@ import InviteUsersModal from "./components/InviteUsersModal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
 
 // Main Chat Component (needs authentication)
 function ChatApp() {
