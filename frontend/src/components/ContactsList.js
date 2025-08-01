@@ -13,6 +13,7 @@ const ContactsList = ({ onSelectContact, selectedContact }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     fetchContacts();
