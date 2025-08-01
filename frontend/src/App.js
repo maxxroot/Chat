@@ -120,7 +120,7 @@ function ChatApp() {
         
         // Immediately start next poll if still active
         if (isPollingRef.current && currentRoom?.room_id === roomId) {
-          setImmediate(() => poll());
+          setTimeout(() => poll(), 0);
         }
         
       } catch (error) {
