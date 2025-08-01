@@ -83,17 +83,24 @@ function ChatApp() {
     stopLongPolling();
     
     isPollingRef.current = true;
+    lastTimestampRef.current = Date.now() / 1000; // Initialize with current timestamp
     setWsConnectionStatus("connected");
     
     console.log('Starting long polling for room:', roomId);
     
     const poll = async () => {
       try {
-        console.log('Long polling request for room:', roomId);
+        const pollingUrl = `${API}/rooms/${roomId}/poll?timeout=30&since=${lastTimestampRef.current}`;
+        console.log('Long polling request for room:', roomId, 'since:', lastTimestampRef.current);
         
-        const response = await axios.get(`${API}/rooms/${roomId}/poll?timeout=30`, {
+        const response = await axios.get(pollingUrl, {
           timeout: 35000 // 35 seconds timeout (longer than server timeout)
         });
+        
+        // Update timestamp for next poll
+        if (response.data.timestamp) {
+          lastTimestampRef.current = response.data.timestamp;
+        }
         
         if (response.data.messages && response.data.messages.length > 0) {
           console.log('Received long polling messages:', response.data.messages);
