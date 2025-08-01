@@ -29,6 +29,9 @@ function ChatApp() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [chatMode, setChatMode] = useState('room'); // 'room' or 'private'
   
+  // States for invite modal
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  
   // WebSocket référence
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
