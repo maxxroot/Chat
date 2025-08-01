@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import axios from "axios";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import AuthModal from "./components/AuthModal";
+import UserProfile from "./components/UserProfile";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
 
-function App() {
+// Main Chat Component (needs authentication)
+function ChatApp() {
+  const { user, isAuthenticated, loading } = useAuth();
   const [serverInfo, setServerInfo] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [currentRoom, setCurrentRoom] = useState(null);
@@ -15,6 +20,8 @@ function App() {
   const [newRoomName, setNewRoomName] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [wsConnectionStatus, setWsConnectionStatus] = useState("disconnected");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   
   // WebSocket référence
   const ws = useRef(null);
@@ -32,20 +39,22 @@ function App() {
 
   // Fetch user's rooms on startup
   useEffect(() => {
-    fetchServerInfo();
-    fetchUserRooms();
-  }, []);
+    if (isAuthenticated) {
+      fetchServerInfo();
+      fetchUserRooms();
+    }
+  }, [isAuthenticated]);
 
   // WebSocket connection management
   useEffect(() => {
-    if (currentRoom) {
+    if (currentRoom && isAuthenticated) {
       connectWebSocket(currentRoom.room_id);
     }
     
     return () => {
       disconnectWebSocket();
     };
-  }, [currentRoom]);
+  }, [currentRoom, isAuthenticated]);
 
   // Cleanup WebSocket on component unmount
   useEffect(() => {
@@ -58,7 +67,7 @@ function App() {
   }, []);
 
   const connectWebSocket = (roomId) => {
-    if (!roomId) return;
+    if (!roomId || !isAuthenticated) return;
     
     // Close existing connection
     disconnectWebSocket();
@@ -117,7 +126,7 @@ function App() {
         setWsConnectionStatus("disconnected");
         
         // Attempt to reconnect after 3 seconds if not intentionally closed
-        if (event.code !== 1000 && currentRoom) {
+        if (event.code !== 1000 && currentRoom && isAuthenticated) {
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log('Attempting to reconnect WebSocket...');
             connectWebSocket(roomId);
@@ -161,14 +170,7 @@ function App() {
       setRooms(response.data.rooms || []);
     } catch (error) {
       console.error("Failed to fetch rooms:", error);
-      // Fallback to default room
-      setRooms([
-        {
-          room_id: `!general:${serverInfo?.server_name || 'librachat.local'}`,
-          name: "General",
-          topic: "General discussion room"
-        }
-      ]);
+      setRooms([]);
     }
   };
 
@@ -266,6 +268,21 @@ function App() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="loading-screen">
+          <h1>LibraChat</h1>
+          <p>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage onShowAuth={() => setShowAuthModal(true)} />;
+  }
+
   return (
     <div className="app-container">
       {/* Header with Federation Info */}
@@ -299,6 +316,26 @@ function App() {
                 </div>
               </>
             )}
+            
+            {/* User Info */}
+            <div className="user-info">
+              <span className="user-display-name">{user?.display_name}</span>
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt="Avatar"
+                  className="user-avatar"
+                  onClick={() => setShowProfile(true)}
+                />
+              ) : (
+                <div
+                  className="user-avatar-placeholder"
+                  onClick={() => setShowProfile(true)}
+                >
+                  {user?.display_name?.charAt(0)?.toUpperCase() || user?.localpart?.charAt(0)?.toUpperCase()}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -345,7 +382,7 @@ function App() {
               </div>
               <div className="detail-item">
                 <span className="label">User ID:</span>
-                <span className="value">@admin:{serverInfo?.server_name}</span>
+                <span className="value">{user?.mxid}</span>
               </div>
               <div className="detail-item">
                 <span className="label">Signing Key:</span>
@@ -415,38 +452,128 @@ function App() {
           ) : (
             <div className="no-room-selected">
               <div className="welcome-section">
-                <h2>Welcome to LibraChat</h2>
-                <p>A federated messaging platform using the Matrix protocol</p>
+                <h2>Bienvenue, {user?.display_name} !</h2>
+                <p>Votre plateforme de messagerie fédérée utilisant le protocole Matrix</p>
                 
                 <div className="features-grid">
                   <div className="feature-card">
                     <h3>🌐 Matrix Federation</h3>
-                    <p>Connect with other LibraChat instances using Matrix protocol standards</p>
+                    <p>Connectez-vous avec d'autres instances LibraChat utilisant les standards du protocole Matrix</p>
                   </div>
                   <div className="feature-card">
                     <h3>🔒 Future E2EE</h3>
-                    <p>End-to-end encryption support planned with Olm/Double Ratchet</p>
+                    <p>Support du chiffrement de bout en bout prévu avec Olm/Double Ratchet</p>
                   </div>
                   <div className="feature-card">
                     <h3>🏠 Self-Hosted</h3>
-                    <p>Run your own instance with full control over your data</p>
+                    <p>Exécutez votre propre instance avec un contrôle total sur vos données</p>
                   </div>
                   <div className="feature-card">
                     <h3>⚡ Real-time</h3>
-                    <p>Instant messaging with WebSocket support</p>
+                    <p>Messagerie instantanée avec support WebSocket</p>
                   </div>
                 </div>
                 
                 <div className="get-started">
-                  <h3>Get Started</h3>
-                  <p>Select a room from the sidebar or create a new one to begin chatting!</p>
+                  <h3>Commencer</h3>
+                  <p>Sélectionnez une salle dans la barre latérale ou créez-en une nouvelle pour commencer à discuter !</p>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+      
+      {/* Profile Modal */}
+      <UserProfile
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+      />
     </div>
+  );
+}
+
+// Landing Page Component (for non-authenticated users)
+function LandingPage({ onShowAuth }) {
+  return (
+    <div className="app-container">
+      <div className="header">
+        <div className="header-content">
+          <div className="logo-section">
+            <h1 className="logo">LibraChat</h1>
+            <span className="subtitle">Federated Messaging</span>
+          </div>
+          
+          <div className="auth-buttons">
+            <button
+              onClick={onShowAuth}
+              className="auth-btn login"
+            >
+              Se connecter
+            </button>
+            <button
+              onClick={onShowAuth}
+              className="auth-btn register"
+            >
+              S'inscrire
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="no-room-selected">
+        <div className="welcome-section">
+          <h2>Bienvenue sur LibraChat</h2>
+          <p>Une plateforme de messagerie fédérée utilisant le protocole Matrix</p>
+          
+          <div className="features-grid">
+            <div className="feature-card">
+              <h3>🌐 Matrix Federation</h3>
+              <p>Connectez-vous avec d'autres instances LibraChat utilisant les standards du protocole Matrix</p>
+            </div>
+            <div className="feature-card">
+              <h3>🔒 Future E2EE</h3>
+              <p>Support du chiffrement de bout en bout prévu avec Olm/Double Ratchet</p>
+            </div>
+            <div className="feature-card">
+              <h3>🏠 Self-Hosted</h3>
+              <p>Exécutez votre propre instance avec un contrôle total sur vos données</p>
+            </div>
+            <div className="feature-card">
+              <h3>⚡ Real-time</h3>
+              <p>Messagerie instantanée avec support WebSocket</p>
+            </div>
+          </div>
+          
+          <div className="get-started">
+            <h3>Commencer</h3>
+            <p>Créez un compte ou connectez-vous pour accéder à vos salles de discussion fédérées !</p>
+            <button
+              onClick={onShowAuth}
+              className="auth-btn register"
+              style={{ marginTop: '1rem', padding: '0.75rem 2rem' }}
+            >
+              Commencer maintenant
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main App with Auth Provider
+function App() {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  return (
+    <AuthProvider>
+      <ChatApp />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+    </AuthProvider>
   );
 }
 
