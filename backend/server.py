@@ -557,6 +557,286 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_acti
         created_at=current_user["created_at"]
     )
 
+# ===== CONTACTS AND PRIVATE MESSAGING ENDPOINTS =====
+
+@api_router.post("/contacts/search")
+async def search_users(search_request: ContactSearchRequest, current_user: dict = Depends(get_current_active_user)):
+    """Search for users locally and from federated instances"""
+    query = search_request.query.strip()
+    if not query:
+        return {"users": []}
+    
+    users = []
+    
+    # Check if query looks like a Matrix ID (contains @)
+    if "@" in query and ":" in query:
+        # Search for federated user by Matrix ID
+        # For now, we'll just check our local database for any cached federated users
+        # In a full implementation, you'd query the federated server
+        federated_user = await db.users.find_one({"mxid": query})
+        if federated_user and federated_user["mxid"] != current_user["mxid"]:
+            users.append({
+                "mxid": federated_user["mxid"],
+                "localpart": federated_user["localpart"],
+                "server_name": federated_user["server_name"],
+                "display_name": federated_user.get("display_name"),
+                "avatar_url": federated_user.get("avatar_url"),
+                "is_federated": federated_user["server_name"] != SERVER_NAME
+            })
+    else:
+        # Search local users by localpart (username)
+        local_users_cursor = db.users.find({
+            "localpart": {"$regex": query, "$options": "i"},
+            "server_name": SERVER_NAME,
+            "mxid": {"$ne": current_user["mxid"]}  # Exclude current user
+        }).limit(20)
+        
+        async for user in local_users_cursor:
+            users.append({
+                "mxid": user["mxid"],
+                "localpart": user["localpart"],
+                "server_name": user["server_name"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url"),
+                "is_federated": False
+            })
+    
+    return {"users": users}
+
+@api_router.post("/contacts/add")
+async def add_contact(add_request: AddContactRequest, current_user: dict = Depends(get_current_active_user)):
+    """Add a user as a contact"""
+    contact_mxid = add_request.contact_mxid
+    user_mxid = current_user["mxid"]
+    
+    if contact_mxid == user_mxid:
+        raise HTTPException(status_code=400, detail="Cannot add yourself as a contact")
+    
+    # Check if contact already exists
+    existing_contact = await db.contacts.find_one({
+        "user_mxid": user_mxid,
+        "contact_mxid": contact_mxid
+    })
+    
+    if existing_contact:
+        raise HTTPException(status_code=400, detail="Contact already exists")
+    
+    # Get contact user info
+    contact_user = await db.users.find_one({"mxid": contact_mxid})
+    if not contact_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Create contact record
+    contact_doc = {
+        "id": str(uuid.uuid4()),
+        "user_mxid": user_mxid,
+        "contact_mxid": contact_mxid,
+        "contact_display_name": contact_user.get("display_name"),
+        "contact_avatar_url": contact_user.get("avatar_url"),
+        "contact_public_key": contact_user.get("public_key"),
+        "status": "active",
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.contacts.insert_one(contact_doc)
+    
+    return {"success": True, "message": "Contact added successfully"}
+
+@api_router.get("/contacts")
+async def get_contacts(current_user: dict = Depends(get_current_active_user)):
+    """Get user's contacts list"""
+    user_mxid = current_user["mxid"]
+    
+    contacts_cursor = db.contacts.find({
+        "user_mxid": user_mxid,
+        "status": "active"
+    })
+    
+    contacts = []
+    async for contact in contacts_cursor:
+        contacts.append({
+            "contact_mxid": contact["contact_mxid"],
+            "display_name": contact.get("contact_display_name"),
+            "avatar_url": contact.get("contact_avatar_url"),
+            "created_at": contact["created_at"].isoformat()
+        })
+    
+    return {"contacts": contacts}
+
+@api_router.delete("/contacts/{contact_mxid}")
+async def remove_contact(contact_mxid: str, current_user: dict = Depends(get_current_active_user)):
+    """Remove a contact"""
+    user_mxid = current_user["mxid"]
+    
+    result = await db.contacts.delete_one({
+        "user_mxid": user_mxid,
+        "contact_mxid": contact_mxid
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    return {"success": True, "message": "Contact removed successfully"}
+
+@api_router.post("/messages/private/send")
+async def send_private_message(message_request: SendPrivateMessageRequest, current_user: dict = Depends(get_current_active_user)):
+    """Send an encrypted private message to a contact"""
+    sender_mxid = current_user["mxid"]
+    recipient_mxid = message_request.recipient_mxid
+    message = message_request.message
+    
+    # Verify contact exists
+    contact = await db.contacts.find_one({
+        "user_mxid": sender_mxid,
+        "contact_mxid": recipient_mxid,
+        "status": "active"
+    })
+    
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    # Get recipient's public key
+    recipient_user = await db.users.find_one({"mxid": recipient_mxid})
+    if not recipient_user or not recipient_user.get("public_key"):
+        raise HTTPException(status_code=400, detail="Recipient's encryption key not available")
+    
+    # Get sender's public key
+    sender_public_key = current_user.get("public_key")
+    if not sender_public_key:
+        raise HTTPException(status_code=400, detail="Sender's encryption key not available")
+    
+    # Encrypt message for recipient
+    encrypted_data_recipient = e2e_crypto.encrypt_message(message, recipient_user["public_key"])
+    
+    # Encrypt message for sender (so they can see their own messages)
+    encrypted_data_sender = e2e_crypto.encrypt_message(message, sender_public_key)
+    
+    # Create private message record
+    message_id = str(uuid.uuid4())
+    private_message_doc = {
+        "id": str(uuid.uuid4()),
+        "message_id": message_id,
+        "sender_mxid": sender_mxid,
+        "recipient_mxid": recipient_mxid,
+        "encrypted_content": encrypted_data_recipient["encrypted_content"],
+        "encrypted_aes_key_sender": encrypted_data_sender["encrypted_aes_key"],
+        "encrypted_aes_key_recipient": encrypted_data_recipient["encrypted_aes_key"],
+        "iv": encrypted_data_recipient["iv"],
+        "auth_tag": encrypted_data_recipient["auth_tag"],
+        "timestamp": datetime.utcnow()
+    }
+    
+    await db.private_messages.insert_one(private_message_doc)
+    
+    return {
+        "success": True,
+        "message_id": message_id,
+        "timestamp": private_message_doc["timestamp"].isoformat()
+    }
+
+@api_router.get("/messages/private/{contact_mxid}")
+async def get_private_messages(contact_mxid: str, limit: int = 50, current_user: dict = Depends(get_current_active_user)):
+    """Get decrypted private messages with a contact"""
+    user_mxid = current_user["mxid"]
+    
+    # Verify contact exists
+    contact = await db.contacts.find_one({
+        "user_mxid": user_mxid,
+        "contact_mxid": contact_mxid,
+        "status": "active"
+    })
+    
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    # Get current user's private key for decryption
+    user_private_key = current_user.get("private_key")
+    if not user_private_key:
+        raise HTTPException(status_code=400, detail="Decryption key not available")
+    
+    # Get messages between user and contact
+    messages_cursor = db.private_messages.find({
+        "$or": [
+            {"sender_mxid": user_mxid, "recipient_mxid": contact_mxid},
+            {"sender_mxid": contact_mxid, "recipient_mxid": user_mxid}
+        ]
+    }).sort("timestamp", -1).limit(limit)
+    
+    messages = []
+    async for msg in messages_cursor:
+        try:
+            # Determine which encrypted key to use
+            if msg["sender_mxid"] == user_mxid:
+                encrypted_aes_key = msg["encrypted_aes_key_sender"]
+            else:
+                encrypted_aes_key = msg["encrypted_aes_key_recipient"]
+            
+            # Decrypt message
+            decrypted_content = e2e_crypto.decrypt_message(
+                msg["encrypted_content"],
+                encrypted_aes_key,
+                msg["iv"],
+                msg["auth_tag"],
+                user_private_key
+            )
+            
+            messages.append({
+                "message_id": msg["message_id"],
+                "sender_mxid": msg["sender_mxid"],
+                "recipient_mxid": msg["recipient_mxid"],
+                "content": decrypted_content,
+                "timestamp": msg["timestamp"].isoformat(),
+                "is_own_message": msg["sender_mxid"] == user_mxid
+            })
+        except Exception as e:
+            logger.warning(f"Failed to decrypt message {msg['message_id']}: {e}")
+            # Skip corrupted messages
+            continue
+    
+    # Reverse to get chronological order
+    messages.reverse()
+    
+    return {
+        "messages": messages,
+        "contact_mxid": contact_mxid
+    }
+
+@api_router.get("/conversations")
+async def get_conversations(current_user: dict = Depends(get_current_active_user)):
+    """Get list of conversations (contacts with recent messages)"""
+    user_mxid = current_user["mxid"]
+    
+    # Get all contacts
+    contacts_cursor = db.contacts.find({
+        "user_mxid": user_mxid,
+        "status": "active"
+    })
+    
+    conversations = []
+    async for contact in contacts_cursor:
+        contact_mxid = contact["contact_mxid"]
+        
+        # Get last message with this contact
+        last_message = await db.private_messages.find_one({
+            "$or": [
+                {"sender_mxid": user_mxid, "recipient_mxid": contact_mxid},
+                {"sender_mxid": contact_mxid, "recipient_mxid": user_mxid}
+            ]
+        }, sort=[("timestamp", -1)])
+        
+        conversations.append({
+            "contact_mxid": contact_mxid,
+            "display_name": contact.get("contact_display_name"),
+            "avatar_url": contact.get("contact_avatar_url"),
+            "last_message_timestamp": last_message["timestamp"].isoformat() if last_message else None,
+            "has_messages": last_message is not None
+        })
+    
+    # Sort by last message timestamp (most recent first)
+    conversations.sort(key=lambda x: x["last_message_timestamp"] or "1970-01-01", reverse=True)
+    
+    return {"conversations": conversations}
+
 @api_router.put("/auth/me", response_model=UserProfile)
 async def update_user_profile(
     update_data: UserUpdateRequest,
