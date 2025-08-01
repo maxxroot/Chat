@@ -398,16 +398,37 @@ async def get_room_messages(room_id: str, limit: int = 50):
         raise HTTPException(status_code=404, detail="Room not found")
     
     # Get recent messages
-    messages = await db.events.find({
+    messages_cursor = db.events.find({
         "room_id": room_id,
         "event_type": "m.room.message"
-    }).sort("origin_server_ts", -1).limit(limit).to_list(limit)
+    }).sort("origin_server_ts", -1).limit(limit)
+    
+    messages = await messages_cursor.to_list(limit)
+    
+    # Convert ObjectId to string and clean up the data
+    cleaned_messages = []
+    for msg in messages:
+        # Convert ObjectId to string
+        if "_id" in msg:
+            msg["_id"] = str(msg["_id"])
+        
+        # Create clean message dict
+        clean_msg = {
+            "event_id": msg.get("event_id"),
+            "room_id": msg.get("room_id"),
+            "sender": msg.get("sender"),
+            "event_type": msg.get("event_type"),
+            "content": msg.get("content", {}),
+            "origin_server_ts": msg.get("origin_server_ts").isoformat() if msg.get("origin_server_ts") else None,
+            "signatures": msg.get("signatures")
+        }
+        cleaned_messages.append(clean_msg)
     
     # Reverse to get chronological order
-    messages.reverse()
+    cleaned_messages.reverse()
     
     return {
-        "messages": messages,
+        "messages": cleaned_messages,
         "room_id": room_id
     }
 
