@@ -55,107 +55,99 @@ function ChatApp() {
     }
   }, [isAuthenticated]);
 
-  // WebSocket connection management
+  // Long polling management
   useEffect(() => {
     if (currentRoom && isAuthenticated) {
-      connectWebSocket(currentRoom.room_id);
+      startLongPolling(currentRoom.room_id);
     }
     
     return () => {
-      disconnectWebSocket();
+      stopLongPolling();
     };
   }, [currentRoom, isAuthenticated]);
 
-  // Cleanup WebSocket on component unmount
+  // Cleanup long polling on component unmount
   useEffect(() => {
     return () => {
-      disconnectWebSocket();
+      stopLongPolling();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
   }, []);
 
-  const connectWebSocket = (roomId) => {
-    if (!roomId || !isAuthenticated) return;
+  const startLongPolling = (roomId) => {
+    if (!roomId || !isAuthenticated || isPollingRef.current) return;
     
-    // Close existing connection
-    disconnectWebSocket();
+    // Stop existing polling
+    stopLongPolling();
     
-    try {
-      const wsUrl = `${WS_URL}/api/ws/${roomId}`;
-      console.log('Connecting to WebSocket:', wsUrl);
-      
-      ws.current = new WebSocket(wsUrl);
-      
-      ws.current.onopen = () => {
-        console.log('WebSocket connected to room:', roomId);
-        setWsConnectionStatus("connected");
-        
-        // Clear any reconnection timeout
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-      };
-      
-      ws.current.onmessage = (event) => {
+    isPollingRef.current = true;
+    setWsConnectionStatus("connected");
+    
+    console.log('Starting long polling for room:', roomId);
+    
+    const poll = async () => {
+      while (isPollingRef.current && currentRoom?.room_id === roomId) {
         try {
-          const data = JSON.parse(event.data);
-          console.log('Received WebSocket message:', data);
+          console.log('Long polling request for room:', roomId);
           
-          // Add the new message to the messages state
-          if (data.type === 'message' && data.content) {
-            const newMessage = {
-              event_id: data.event_id,
-              sender: data.sender,
-              content: data.content,
-              origin_server_ts: data.origin_server_ts || Date.now()
-            };
+          const response = await axios.get(`${API}/rooms/${roomId}/poll?timeout=30`);
+          
+          if (response.data.messages && response.data.messages.length > 0) {
+            console.log('Received long polling messages:', response.data.messages);
             
-            setMessages(prevMessages => {
-              // Check if message already exists to avoid duplicates
-              const messageExists = prevMessages.some(msg => msg.event_id === newMessage.event_id);
-              if (messageExists) return prevMessages;
-              
-              return [...prevMessages, newMessage];
+            response.data.messages.forEach(messageData => {
+              if (messageData.type === 'new_message' && messageData.data) {
+                const newMessage = {
+                  event_id: messageData.data.event_id,
+                  sender: messageData.data.sender,
+                  content: messageData.data.content,
+                  origin_server_ts: messageData.data.origin_server_ts
+                };
+                
+                setMessages(prevMessages => {
+                  // Check if message already exists to avoid duplicates
+                  const messageExists = prevMessages.some(msg => msg.event_id === newMessage.event_id);
+                  if (messageExists) return prevMessages;
+                  
+                  return [...prevMessages, newMessage];
+                });
+              }
             });
           }
+          
+          // Short delay before next poll
+          if (isPollingRef.current) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('Long polling error:', error);
+          setWsConnectionStatus("error");
+          
+          // Retry after delay if still active
+          if (isPollingRef.current && currentRoom?.room_id === roomId) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            setWsConnectionStatus("connected");
+          }
         }
-      };
-      
-      ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setWsConnectionStatus("error");
-      };
-      
-      ws.current.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        setWsConnectionStatus("disconnected");
-        
-        // Attempt to reconnect after 3 seconds if not intentionally closed
-        if (event.code !== 1000 && currentRoom && isAuthenticated) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting to reconnect WebSocket...');
-            connectWebSocket(roomId);
-          }, 3000);
-        }
-      };
-      
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      }
+    };
+    
+    // Start polling
+    poll().catch(error => {
+      console.error('Error starting long polling:', error);
       setWsConnectionStatus("error");
-    }
+    });
   };
 
-  const disconnectWebSocket = () => {
-    if (ws.current) {
-      ws.current.close(1000, 'Intentional disconnect');
-      ws.current = null;
+  const stopLongPolling = () => {
+    if (isPollingRef.current) {
+      console.log('Stopping long polling');
+      isPollingRef.current = false;
+      setWsConnectionStatus("disconnected");
     }
-    setWsConnectionStatus("disconnected");
     
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
