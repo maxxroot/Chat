@@ -1346,6 +1346,13 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this room")
     
+    # Extract mentions from message body
+    message_body = message.body
+    mentioned_usernames = mention_handler.extract_mentions(message_body)
+    mentioned_mxids = await mention_handler.resolve_mentions_to_mxids(mentioned_usernames, room_id)
+    
+    logger.info(f"Message mentions detected: {mentioned_usernames} -> {mentioned_mxids}")
+    
     # Create message event
     event_dict = {
         "event_id": MatrixID.event_id(),
@@ -1354,7 +1361,8 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
         "type": "m.room.message",
         "content": {
             "msgtype": message.msgtype,
-            "body": message.body
+            "body": message.body,
+            "mentions": mentioned_mxids  # Add mentions to content
         },
         "origin_server_ts": int(time.time() * 1000)
     }
@@ -1369,10 +1377,17 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
         sender=user_mxid,
         event_type="m.room.message",
         content=event_dict["content"],
+        mentions=mentioned_mxids,  # Store mentions in event
         origin_server_ts=datetime.fromtimestamp(event_dict["origin_server_ts"] / 1000),
         signatures=signed_event_dict.get("signatures")
     )
     await db.events.insert_one(message_event.dict())
+    
+    # Create mention notifications
+    if mentioned_mxids:
+        await mention_handler.create_mention_notifications(
+            mentioned_mxids, room_id, message_event.event_id, user_mxid, event_dict["content"]
+        )
     
     # Broadcast message to all connected clients in the room (WebSocket)
     broadcast_message = {
@@ -1382,6 +1397,7 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
             "room_id": room_id,
             "sender": user_mxid,
             "content": message_event.content,
+            "mentions": mentioned_mxids,  # Include mentions in broadcast
             "origin_server_ts": event_dict["origin_server_ts"],
             "timestamp": datetime.fromtimestamp(event_dict["origin_server_ts"] / 1000).isoformat()
         }
@@ -1393,11 +1409,12 @@ async def send_message(room_id: str, message: SendMessageRequest, current_user: 
     # Broadcast via Long Polling
     await polling_manager.add_message_to_room(room_id, broadcast_message)
     
-    logger.info(f"Message broadcasted to room {room_id} via WebSocket and Long Polling")
+    logger.info(f"Message broadcasted to room {room_id} via WebSocket and Long Polling with {len(mentioned_mxids)} mentions")
     
     return {
         "event_id": message_event.event_id,
         "room_id": room_id,
+        "mentions": mentioned_mxids,
         "sent": True
     }
 
