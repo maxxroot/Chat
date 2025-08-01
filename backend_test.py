@@ -73,7 +73,7 @@ class ContactsMessagingTester:
                     self.user1_mxid = data["user"]["mxid"]
                     
                     # Verify Matrix ID format
-                    if self.user1_mxid.startswith("@alice_crypto:librachat.local"):
+                    if self.user1_mxid.startswith(f"@alice_crypto_{suffix}:librachat.local"):
                         self.log_test(
                             "User Registration with RSA Keys (User 1)",
                             True,
