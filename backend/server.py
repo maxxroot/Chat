@@ -1042,6 +1042,81 @@ async def join_room(room_id: str, current_user: dict = Depends(get_current_activ
         "state": "joined"
     }
 
+@api_router.post("/rooms/{room_id}/invite")
+async def invite_users_to_room(room_id: str, invite_request: InviteToRoomRequest, current_user: dict = Depends(get_current_active_user)):
+    """Invite users to a Matrix room"""
+    user_mxid = current_user["mxid"]
+    
+    # Check if room exists
+    room = await db.rooms.find_one({"room_id": room_id})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Check if current user is member of room (has permission to invite)
+    member = await db.room_members.find_one({
+        "room_id": room_id,
+        "user_mxid": user_mxid,
+        "membership": "join"
+    })
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+    
+    invited_users = []
+    errors = []
+    
+    for invited_mxid in invite_request.user_mxids:
+        try:
+            # Check if user exists
+            invited_user = await db.users.find_one({"mxid": invited_mxid})
+            if not invited_user:
+                errors.append(f"User {invited_mxid} not found")
+                continue
+            
+            # Check if user is already a member
+            existing_member = await db.room_members.find_one({
+                "room_id": room_id,
+                "user_mxid": invited_mxid
+            })
+            if existing_member:
+                if existing_member["membership"] == "join":
+                    errors.append(f"User {invited_mxid} is already a member")
+                    continue
+                elif existing_member["membership"] == "invite":
+                    errors.append(f"User {invited_mxid} is already invited")
+                    continue
+            
+            # Create room membership with "invite" status
+            membership = RoomMember(
+                id=str(uuid.uuid4()),
+                room_id=room_id,
+                user_mxid=invited_mxid,
+                membership="invite",
+                power_level=0,
+                joined_at=datetime.utcnow()
+            )
+            
+            # For this MVP, automatically accept the invitation (join the user)
+            # In a full Matrix implementation, you'd send invite events and wait for acceptance
+            membership.membership = "join"
+            
+            await db.room_members.insert_one(membership.dict())
+            invited_users.append({
+                "mxid": invited_mxid,
+                "display_name": invited_user.get("display_name"),
+                "status": "joined"  # Since we auto-accept
+            })
+            
+        except Exception as e:
+            errors.append(f"Error inviting {invited_mxid}: {str(e)}")
+    
+    return {
+        "room_id": room_id,
+        "invited_users": invited_users,
+        "errors": errors,
+        "success_count": len(invited_users),
+        "error_count": len(errors)
+    }
+
 @api_router.post("/rooms/{room_id}/send/m.room.message")
 async def send_message(room_id: str, message: SendMessageRequest, current_user: dict = Depends(get_current_active_user)):
     """Send a message to a Matrix room"""
