@@ -31,9 +31,13 @@ function App() {
     }
   };
 
-  const fetchPublicRooms = async () => {
+  const fetchUserRooms = async () => {
     try {
-      // For now, we'll create a default room list
+      const response = await axios.get(`${API}/rooms`);
+      setRooms(response.data.rooms || []);
+    } catch (error) {
+      console.error("Failed to fetch rooms:", error);
+      // Fallback to default room
       setRooms([
         {
           room_id: `!general:${serverInfo?.server_name || 'librachat.local'}`,
@@ -41,8 +45,6 @@ function App() {
           topic: "General discussion room"
         }
       ]);
-    } catch (error) {
-      console.error("Failed to fetch rooms:", error);
     }
   };
 
