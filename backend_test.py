@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 import time
 
 # Backend URL from environment
-BACKEND_URL = "https://86bee035-494c-43d8-b0c9-85f67ba7b4ab.preview.emergentagent.com"
+BACKEND_URL = "https://5e225871-0eb3-4c49-96bc-122cb6de9763.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 class MatrixFederationTester:
