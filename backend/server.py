@@ -428,11 +428,30 @@ async def get_user_rooms():
         return {"rooms": []}
     
     # Get room details
-    rooms = await db.rooms.find({
+    rooms_cursor = db.rooms.find({
         "room_id": {"$in": room_ids}
-    }).to_list(None)
+    })
+    rooms = await rooms_cursor.to_list(None)
     
-    return {"rooms": rooms}
+    # Convert ObjectId to string and clean up the data
+    cleaned_rooms = []
+    for room in rooms:
+        # Convert ObjectId to string
+        if "_id" in room:
+            room["_id"] = str(room["_id"])
+        
+        # Remove any other non-serializable fields and create clean room dict
+        clean_room = {
+            "room_id": room.get("room_id"),
+            "name": room.get("name"),
+            "topic": room.get("topic"),
+            "is_public": room.get("is_public", True),
+            "creator_mxid": room.get("creator_mxid"),
+            "created_at": room.get("created_at").isoformat() if room.get("created_at") else None
+        }
+        cleaned_rooms.append(clean_room)
+    
+    return {"rooms": cleaned_rooms}
 
 # Federation API endpoints
 @app.get("/_matrix/federation/v1/version")
