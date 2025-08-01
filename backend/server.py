@@ -175,6 +175,39 @@ class SendMessageRequest(BaseModel):
     msgtype: str = "m.text"
     body: str
 
+# New models for contacts and private messaging
+class Contact(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_mxid: str  # The user who owns this contact
+    contact_mxid: str  # The contact's Matrix ID
+    contact_display_name: Optional[str] = None
+    contact_avatar_url: Optional[str] = None
+    contact_public_key: Optional[str] = None  # Contact's public key for E2E
+    status: str = "active"  # active, blocked
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PrivateMessage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    message_id: str  # Unique message ID
+    sender_mxid: str
+    recipient_mxid: str
+    encrypted_content: str  # AES encrypted message content
+    encrypted_aes_key_sender: str  # AES key encrypted with sender's RSA public key
+    encrypted_aes_key_recipient: str  # AES key encrypted with recipient's RSA public key
+    iv: str  # Initialization vector for AES
+    auth_tag: str  # Authentication tag for AES-GCM
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class ContactSearchRequest(BaseModel):
+    query: str  # Username or Matrix ID to search for
+
+class AddContactRequest(BaseModel):
+    contact_mxid: str  # Matrix ID of user to add as contact
+
+class SendPrivateMessageRequest(BaseModel):
+    recipient_mxid: str
+    message: str
+
 # Crypto utilities for Matrix federation
 class MatrixSigning:
     def __init__(self):
