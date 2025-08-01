@@ -463,6 +463,9 @@ async def register_user(user_data: UserRegisterRequest):
             detail="Username or email already registered"
         )
     
+    # Generate RSA keys for E2E encryption
+    private_key_pem, public_key_pem = e2e_crypto.generate_rsa_keys()
+    
     # Create new user
     user_id = str(uuid.uuid4())
     mxid = MatrixID.user_id(user_data.username)
@@ -478,6 +481,8 @@ async def register_user(user_data: UserRegisterRequest):
         "avatar_url": None,
         "password_hash": password_hash,
         "is_active": True,
+        "public_key": public_key_pem,
+        "private_key": private_key_pem,  # In production, this should be encrypted with user's password
         "created_at": datetime.utcnow()
     }
     
