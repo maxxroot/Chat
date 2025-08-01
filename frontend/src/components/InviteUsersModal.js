@@ -38,12 +38,20 @@ const InviteUsersModal = ({ isOpen, onClose, roomId, roomName }) => {
 
     setIsSearching(true);
     try {
+      console.log('Searching for:', query.trim());
+      console.log('API URL:', `${API}/contacts/search`);
+      console.log('Auth headers:', axios.defaults.headers.common);
+      
       const response = await axios.post(`${API}/contacts/search`, {
         query: query.trim()
       });
+      
+      console.log('Search response:', response.data);
       setSearchResults(response.data.users || []);
     } catch (error) {
       console.error('Search failed:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
