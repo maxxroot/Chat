@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test Matrix federation implementation with discovery endpoints, server keys, room management APIs, federation endpoints, and server info. Verify Matrix ID formats, cryptographic signatures, and PostgreSQL database usage."
+user_problem_statement: "Test all the new contacts and private messaging functionality that was just added to the LibraChat backend: Test endpoints for contact search, add/remove contacts, send/receive encrypted private messages, get conversations, verify RSA key generation, E2E encryption, authentication, and database indexes."
 
 backend:
   - task: "Matrix Server Discovery Endpoint"
@@ -248,6 +248,126 @@ backend:
         - working: true
           agent: "testing"
           comment: "Ed25519 cryptographic signing implemented correctly. Server keys properly signed, events signed with ed25519:key1. MatrixSigning class working with proper canonical JSON and base64 encoding. Verify key: iycAYg6jfvn4VJKuwUczqN4z228jWUUtz3Axn/h2cCs="
+
+  - task: "User Registration with RSA Key Generation"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "POST /api/auth/register working perfectly. Generates RSA key pairs during registration for E2E encryption. Returns JWT tokens with proper Matrix ID format (@user:librachat.local). Tested with real users: alice_crypto and bob_secure."
+
+  - task: "Contact Search API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "POST /api/contacts/search working perfectly. Searches users locally by username and by Matrix ID. Returns proper user info with mxid, display_name, server_name, and is_federated fields. Authentication required and working."
+
+  - task: "Add Contact API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "POST /api/contacts/add working perfectly. Adds contacts with proper validation (prevents self-add, duplicate contacts). Stores contact info including public keys for E2E encryption. Mutual contact addition tested successfully."
+
+  - task: "Get Contacts API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "GET /api/contacts working perfectly. Returns user's contacts list with contact_mxid, display_name, avatar_url, and created_at fields. Properly filters by user and active status."
+
+  - task: "Remove Contact API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "DELETE /api/contacts/{contact_mxid} working perfectly. Removes contacts with proper validation. Returns success message when contact removed, 404 when contact not found."
+
+  - task: "Send Private Message API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "POST /api/messages/private/send working perfectly. Sends encrypted private messages using hybrid RSA+AES encryption. Encrypts message for both sender and recipient. Returns message_id and timestamp. E2E encryption working transparently."
+
+  - task: "Get Private Messages API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "GET /api/messages/private/{contact_mxid} working perfectly. Retrieves and decrypts private messages between users. Returns decrypted content, sender info, timestamps, and is_own_message flag. Message retrieval works from both sender and recipient perspectives."
+
+  - task: "Get Conversations API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "GET /api/conversations working perfectly. Returns list of conversations with contacts, including last_message_timestamp and has_messages flags. Properly sorted by most recent activity."
+
+  - task: "Authentication and Authorization"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "All contacts and private messaging endpoints properly require authentication. Returns HTTP 403 for unauthenticated requests. JWT token authentication working correctly across all 7 tested endpoints."
+
+  - task: "Database Indexes for Contacts and Messages"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Database indexes created successfully on startup: contacts.create_index([('user_mxid', 1), ('contact_mxid', 1)], unique=True), private_messages.create_index([('sender_mxid', 1), ('recipient_mxid', 1), ('timestamp', -1)]). Performance optimized for contact and message queries."
 
 frontend:
   # No frontend testing performed as per instructions
