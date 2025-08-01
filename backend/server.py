@@ -311,6 +311,142 @@ manager = ConnectionManager()
 app = FastAPI(title="LibraChat Federation Server")
 api_router = APIRouter(prefix="/api")
 
+# Authentication endpoints
+@api_router.post("/auth/register", response_model=Token)
+async def register_user(user_data: UserRegisterRequest):
+    """Register a new user"""
+    # Check if user already exists
+    existing_user = await db.users.find_one({
+        "$or": [
+            {"localpart": user_data.username},
+            {"email": user_data.email}
+        ]
+    })
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already registered"
+        )
+    
+    # Create new user
+    user_id = str(uuid.uuid4())
+    mxid = MatrixID.user_id(user_data.username)
+    password_hash = get_password_hash(user_data.password)
+    
+    user_doc = {
+        "id": user_id,
+        "mxid": mxid,
+        "localpart": user_data.username,
+        "server_name": SERVER_NAME,
+        "email": user_data.email,
+        "display_name": user_data.display_name or user_data.username,
+        "avatar_url": None,
+        "password_hash": password_hash,
+        "is_active": True,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_data.username}, expires_delta=access_token_expires
+    )
+    
+    user_profile = UserProfile(
+        mxid=mxid,
+        localpart=user_data.username,
+        display_name=user_doc["display_name"],
+        avatar_url=user_doc["avatar_url"],
+        email=user_data.email,
+        is_active=True,
+        created_at=user_doc["created_at"]
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=user_profile
+    )
+
+@api_router.post("/auth/login", response_model=Token)
+async def login_user(form_data: UserLoginRequest):
+    """Authenticate user and return token"""
+    user = await get_user_by_username(form_data.username)
+    if not user or not verify_password(form_data.password, user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user["localpart"]}, expires_delta=access_token_expires
+    )
+    
+    user_profile = UserProfile(
+        mxid=user["mxid"],
+        localpart=user["localpart"],
+        display_name=user.get("display_name"),
+        avatar_url=user.get("avatar_url"),
+        email=user.get("email"),
+        is_active=user.get("is_active", True),
+        created_at=user["created_at"]
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=user_profile
+    )
+
+@api_router.get("/auth/me", response_model=UserProfile)
+async def get_current_user_profile(current_user: dict = Depends(get_current_active_user)):
+    """Get current user profile"""
+    return UserProfile(
+        mxid=current_user["mxid"],
+        localpart=current_user["localpart"],
+        display_name=current_user.get("display_name"),
+        avatar_url=current_user.get("avatar_url"),
+        email=current_user.get("email"),
+        is_active=current_user.get("is_active", True),
+        created_at=current_user["created_at"]
+    )
+
+@api_router.put("/auth/me", response_model=UserProfile)
+async def update_user_profile(
+    update_data: UserUpdateRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Update current user profile"""
+    update_dict = {}
+    if update_data.display_name is not None:
+        update_dict["display_name"] = update_data.display_name
+    if update_data.avatar_url is not None:
+        update_dict["avatar_url"] = update_data.avatar_url
+    
+    if update_dict:
+        await db.users.update_one(
+            {"localpart": current_user["localpart"]},
+            {"$set": update_dict}
+        )
+        current_user.update(update_dict)
+    
+    return UserProfile(
+        mxid=current_user["mxid"],
+        localpart=current_user["localpart"],
+        display_name=current_user.get("display_name"),
+        avatar_url=current_user.get("avatar_url"),
+        email=current_user.get("email"),
+        is_active=current_user.get("is_active", True),
+        created_at=current_user["created_at"]
+    )
+
 # Matrix Federation Discovery Endpoints
 @app.get("/.well-known/matrix/server")
 async def matrix_server_discovery():
