@@ -14,6 +14,11 @@ function App() {
   const [newMessage, setNewMessage] = useState("");
   const [newRoomName, setNewRoomName] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  const [wsConnectionStatus, setWsConnectionStatus] = useState("disconnected");
+  
+  // WebSocket référence
+  const ws = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
 
   // Fetch user's rooms on startup
   useEffect(() => {
