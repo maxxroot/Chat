@@ -370,10 +370,22 @@ function ChatApp() {
           ) : currentRoom ? (
             <>
               <div className="chat-header">
-                <h2>#{currentRoom.name}</h2>
-                <div className="room-details">
-                  <span className="room-id-display">{currentRoom.room_id}</span>
-                  {currentRoom.topic && <span className="topic">{currentRoom.topic}</span>}
+                <div className="room-info">
+                  <h2>#{currentRoom.name}</h2>
+                  <div className="room-details">
+                    <span className="room-id-display">{currentRoom.room_id}</span>
+                    {currentRoom.topic && <span className="topic">{currentRoom.topic}</span>}
+                  </div>
+                </div>
+                <div className="room-actions">
+                  <button 
+                    onClick={() => setShowInviteModal(true)}
+                    className="invite-btn"
+                    title="Invite users to this room"
+                  >
+                    <span className="invite-icon">👥</span>
+                    Invite Users
+                  </button>
                 </div>
               </div>
               
