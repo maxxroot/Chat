@@ -19,6 +19,16 @@ function App() {
   // WebSocket référence
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // Fetch user's rooms on startup
   useEffect(() => {
