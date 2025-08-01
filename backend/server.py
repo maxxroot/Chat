@@ -1645,6 +1645,121 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ===== NOTIFICATIONS ENDPOINTS =====
+
+@api_router.get("/notifications")
+async def get_notifications(
+    limit: int = 50,
+    unread_only: bool = False,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get notifications for the current user"""
+    user_mxid = current_user["mxid"]
+    
+    # Build query
+    query = {"user_mxid": user_mxid}
+    if unread_only:
+        query["is_read"] = False
+    
+    # Get notifications
+    notifications_cursor = db.notifications.find(query).sort("created_at", -1).limit(limit)
+    notifications_list = await notifications_cursor.to_list(None)
+    
+    # Get unread count
+    unread_count = await db.notifications.count_documents({
+        "user_mxid": user_mxid,
+        "is_read": False
+    })
+    
+    return {
+        "notifications": notifications_list,
+        "unread_count": unread_count,
+        "total_count": len(notifications_list)
+    }
+
+@api_router.post("/notifications/{notification_id}/mark-read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Mark a notification as read"""
+    user_mxid = current_user["mxid"]
+    
+    result = await db.notifications.update_one(
+        {
+            "notification_id": notification_id,
+            "user_mxid": user_mxid
+        },
+        {"$set": {"is_read": True}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    return {"success": True, "notification_id": notification_id}
+
+@api_router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(current_user: dict = Depends(get_current_active_user)):
+    """Mark all notifications as read for the current user"""
+    user_mxid = current_user["mxid"]
+    
+    result = await db.notifications.update_many(
+        {
+            "user_mxid": user_mxid,
+            "is_read": False
+        },
+        {"$set": {"is_read": True}}
+    )
+    
+    return {
+        "success": True,
+        "marked_read": result.modified_count
+    }
+
+@api_router.get("/rooms/{room_id}/members")
+async def get_room_members(
+    room_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get members of a room (useful for mention autocomplete)"""
+    user_mxid = current_user["mxid"]
+    
+    # Check if user is member of the room
+    member = await db.room_members.find_one({
+        "room_id": room_id,
+        "user_mxid": user_mxid,
+        "membership": "join"
+    })
+    
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+    
+    # Get all room members
+    members_cursor = db.room_members.find({
+        "room_id": room_id,
+        "membership": "join"
+    })
+    members_list = await members_cursor.to_list(None)
+    
+    # Get user details for each member
+    member_details = []
+    for member in members_list:
+        user = await db.users.find_one({"mxid": member["user_mxid"]})
+        if user:
+            member_details.append({
+                "mxid": user["mxid"],
+                "localpart": user["localpart"],
+                "display_name": user.get("display_name", user["localpart"]),
+                "avatar_url": user.get("avatar_url"),
+                "joined_at": member["joined_at"]
+            })
+    
+    return {
+        "room_id": room_id,
+        "members": member_details,
+        "total_members": len(member_details)
+    }
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
