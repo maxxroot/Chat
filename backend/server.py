@@ -248,6 +248,20 @@ async def get_server_keys():
     signed_keys = matrix_signing.sign_json(keys)
     return signed_keys
 
+# WebSocket endpoint for real-time chat
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    await manager.connect(websocket, room_id)
+    try:
+        while True:
+            # Keep the connection alive and listen for any data
+            data = await websocket.receive_text()
+            # We can handle ping/pong or other client messages here if needed
+            logger.info(f"Received WebSocket data in room {room_id}: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, room_id)
+        logger.info(f"WebSocket disconnected from room {room_id}")
+
 # Room Creation and Management
 @api_router.post("/createRoom")
 async def create_room(request: CreateRoomRequest):
