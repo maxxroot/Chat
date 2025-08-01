@@ -351,8 +351,12 @@ async def send_message(room_id: str, message: SendMessageRequest):
         origin_server_ts=datetime.utcnow()
     )
     
+    # Convert to dict and prepare for signing
+    event_dict = message_event.dict(exclude={'id'})
+    event_dict["origin_server_ts"] = int(message_event.origin_server_ts.timestamp() * 1000)
+    
     # Sign the event
-    signed_event_dict = matrix_signing.sign_json(message_event.dict(exclude={'id'}))
+    signed_event_dict = matrix_signing.sign_json(event_dict)
     message_event.signatures = signed_event_dict.get("signatures")
     await db.events.insert_one(message_event.dict())
     
