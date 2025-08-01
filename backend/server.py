@@ -241,8 +241,12 @@ async def create_room(request: CreateRoomRequest):
         origin_server_ts=datetime.utcnow()
     )
     
+    # Convert to dict and prepare for signing
+    event_dict = creation_event.dict(exclude={'id'})
+    event_dict["origin_server_ts"] = int(creation_event.origin_server_ts.timestamp() * 1000)
+    
     # Sign and store the event
-    signed_event_dict = matrix_signing.sign_json(creation_event.dict(exclude={'id'}))
+    signed_event_dict = matrix_signing.sign_json(event_dict)
     creation_event.signatures = signed_event_dict.get("signatures")
     await db.events.insert_one(creation_event.dict())
     
