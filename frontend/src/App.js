@@ -87,58 +87,67 @@ function ChatApp() {
     console.log('Starting long polling for room:', roomId);
     
     const poll = async () => {
-      while (isPollingRef.current && currentRoom?.room_id === roomId) {
-        try {
-          console.log('Long polling request for room:', roomId);
+      try {
+        console.log('Long polling request for room:', roomId);
+        
+        const response = await axios.get(`${API}/rooms/${roomId}/poll?timeout=30`, {
+          timeout: 35000 // 35 seconds timeout (longer than server timeout)
+        });
+        
+        if (response.data.messages && response.data.messages.length > 0) {
+          console.log('Received long polling messages:', response.data.messages);
           
-          const response = await axios.get(`${API}/rooms/${roomId}/poll?timeout=30`);
-          
-          if (response.data.messages && response.data.messages.length > 0) {
-            console.log('Received long polling messages:', response.data.messages);
-            
-            response.data.messages.forEach(messageData => {
-              if (messageData.type === 'new_message' && messageData.data) {
-                const newMessage = {
-                  event_id: messageData.data.event_id,
-                  sender: messageData.data.sender,
-                  content: messageData.data.content,
-                  origin_server_ts: messageData.data.origin_server_ts
-                };
+          response.data.messages.forEach(messageData => {
+            if (messageData.type === 'new_message' && messageData.data) {
+              const newMessage = {
+                event_id: messageData.data.event_id,
+                sender: messageData.data.sender,
+                content: messageData.data.content,
+                origin_server_ts: messageData.data.origin_server_ts
+              };
+              
+              setMessages(prevMessages => {
+                // Check if message already exists to avoid duplicates
+                const messageExists = prevMessages.some(msg => msg.event_id === newMessage.event_id);
+                if (messageExists) return prevMessages;
                 
-                setMessages(prevMessages => {
-                  // Check if message already exists to avoid duplicates
-                  const messageExists = prevMessages.some(msg => msg.event_id === newMessage.event_id);
-                  if (messageExists) return prevMessages;
-                  
-                  return [...prevMessages, newMessage];
-                });
-              }
-            });
+                console.log('Adding new message via long polling:', newMessage);
+                return [...prevMessages, newMessage];
+              });
+            }
+          });
+        }
+        
+        // Immediately start next poll if still active
+        if (isPollingRef.current && currentRoom?.room_id === roomId) {
+          setImmediate(() => poll());
+        }
+        
+      } catch (error) {
+        console.error('Long polling error:', error);
+        
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          // Timeout is normal, immediately restart polling
+          console.log('Long polling timeout, restarting...');
+          if (isPollingRef.current && currentRoom?.room_id === roomId) {
+            setImmediate(() => poll());
           }
-          
-          // Short delay before next poll
-          if (isPollingRef.current) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          
-        } catch (error) {
-          console.error('Long polling error:', error);
+        } else {
+          // Other errors - set error status and retry after delay
           setWsConnectionStatus("error");
           
-          // Retry after delay if still active
           if (isPollingRef.current && currentRoom?.room_id === roomId) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            setWsConnectionStatus("connected");
+            setTimeout(() => {
+              setWsConnectionStatus("connected");
+              poll();
+            }, 3000);
           }
         }
       }
     };
     
-    // Start polling
-    poll().catch(error => {
-      console.error('Error starting long polling:', error);
-      setWsConnectionStatus("error");
-    });
+    // Start polling immediately
+    poll();
   };
 
   const stopLongPolling = () => {
