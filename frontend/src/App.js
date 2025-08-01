@@ -24,6 +24,10 @@ function ChatApp() {
   const [wsConnectionStatus, setWsConnectionStatus] = useState("disconnected");
   const [showProfile, setShowProfile] = useState(false);
   
+  // New states for private messaging
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [chatMode, setChatMode] = useState('room'); // 'room' or 'private'
+  
   // WebSocket référence
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
