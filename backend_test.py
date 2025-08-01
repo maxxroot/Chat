@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 import time
 
 # Backend URL from environment
-BACKEND_URL = "https://5e225871-0eb3-4c49-96bc-122cb6de9763.preview.emergentagent.com"
+BACKEND_URL = "https://94da3904-fab0-4abd-826c-8555c2d9fa69.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 class ContactsMessagingTester:
