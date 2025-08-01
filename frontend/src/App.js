@@ -73,9 +73,27 @@ function App() {
     try {
       await axios.post(`${API}/rooms/${room.room_id}/join`);
       setCurrentRoom(room);
-      setMessages([]); // Clear messages for now
+      
+      // Load existing messages
+      await loadRoomMessages(room.room_id);
     } catch (error) {
       console.error("Failed to join room:", error);
+    }
+  };
+
+  const loadRoomMessages = async (roomId) => {
+    try {
+      const response = await axios.get(`${API}/rooms/${roomId}/messages?limit=50`);
+      const loadedMessages = response.data.messages.map(msg => ({
+        event_id: msg.event_id,
+        sender: msg.sender,
+        content: msg.content,
+        origin_server_ts: new Date(msg.origin_server_ts).getTime()
+      }));
+      setMessages(loadedMessages);
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+      setMessages([]);
     }
   };
 
