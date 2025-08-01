@@ -48,10 +48,14 @@ class ContactsMessagingTester:
     def test_user_registration_with_rsa_keys(self):
         """Test user registration and verify RSA key generation"""
         try:
+            # Generate unique usernames to avoid conflicts
+            import random
+            suffix = random.randint(1000, 9999)
+            
             # Register first user
             user1_data = {
-                "username": "alice_crypto",
-                "email": "alice@example.com",
+                "username": f"alice_crypto_{suffix}",
+                "email": f"alice{suffix}@example.com",
                 "password": "securepass123",
                 "display_name": "Alice Cryptographer"
             }
