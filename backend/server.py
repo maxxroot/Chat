@@ -77,6 +77,8 @@ class User(BaseModel):
     avatar_url: Optional[str] = None
     password_hash: Optional[str] = None
     is_active: bool = True
+    public_key: Optional[str] = None  # RSA public key for E2E encryption
+    private_key: Optional[str] = None  # RSA private key (encrypted with user password)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 # Authentication Models
