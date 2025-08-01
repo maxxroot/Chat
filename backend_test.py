@@ -28,6 +28,7 @@ class ContactsMessagingTester:
         self.user2_mxid = None
         self.user1_data = None
         self.user2_data = None
+        self.test_room_id = None
         # Generate unique suffix for this test run
         import random
         self.suffix = random.randint(1000, 9999)
