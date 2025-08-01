@@ -142,7 +142,20 @@ class MatrixSigning:
     
     def sign_json(self, json_object: Dict[str, Any]) -> Dict[str, Any]:
         signed = dict(json_object)
-        canonical = canonicaljson.encode_canonical_json(signed)
+        
+        # Convert datetime objects to timestamps for JSON serialization
+        def convert_datetimes(obj):
+            if isinstance(obj, dict):
+                return {k: convert_datetimes(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_datetimes(item) for item in obj]
+            elif isinstance(obj, datetime):
+                return int(obj.timestamp() * 1000)  # Convert to milliseconds timestamp
+            else:
+                return obj
+        
+        signed_converted = convert_datetimes(signed)
+        canonical = canonicaljson.encode_canonical_json(signed_converted)
         signature = self.signing_key.sign(canonical)
         signature_base64 = base64.b64encode(signature).decode()
         
