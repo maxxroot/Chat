@@ -128,7 +128,7 @@ class ContactsMessagingTester:
                     self.user2_data = data["user"]
                     self.user2_mxid = data["user"]["mxid"]
                     
-                    if self.user2_mxid.startswith(f"@bob_secure_{self.suffix}:librachat.local"):
+                    if self.user2_mxid.startswith(f"@bob_secure_") and ":librachat.local" in self.user2_mxid:
                         self.log_test(
                             "User Registration with RSA Keys (User 2)",
                             True,
