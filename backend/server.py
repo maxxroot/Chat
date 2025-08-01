@@ -512,6 +512,97 @@ class LongPollingManager:
 # Initialize long polling manager
 polling_manager = LongPollingManager()
 
+# Utility functions for mentions and notifications
+class MentionHandler:
+    @staticmethod
+    def extract_mentions(message_body: str) -> List[str]:
+        """Extract @mentions from message body
+        Supports formats: @username, @user:domain.tld
+        Returns list of usernames (without @)
+        """
+        if not message_body:
+            return []
+        
+        # Pattern to match @username or @user:domain.tld
+        mention_pattern = r'@([a-zA-Z0-9_.-]+(?::[a-zA-Z0-9_.-]+\.[a-zA-Z]{2,})?)'
+        matches = re.findall(mention_pattern, message_body)
+        
+        # Clean up matches - remove domain part if present, keep only username
+        mentions = []
+        for match in matches:
+            if ':' in match:
+                username = match.split(':')[0]
+            else:
+                username = match
+            mentions.append(username)
+        
+        return list(set(mentions))  # Remove duplicates
+    
+    @staticmethod
+    async def resolve_mentions_to_mxids(mentions: List[str], room_id: str) -> List[str]:
+        """Convert mention usernames to full mxids for users in the room"""
+        if not mentions:
+            return []
+        
+        resolved_mxids = []
+        
+        # Get all room members
+        room_members = await db.room_members.find({
+            "room_id": room_id,
+            "membership": "join"
+        }).to_list(None)
+        
+        member_mxids = [member["user_mxid"] for member in room_members]
+        
+        # For each mention, find matching users
+        for mention in mentions:
+            for mxid in member_mxids:
+                # Extract localpart from mxid (@localpart:domain)
+                if mxid.startswith('@'):
+                    localpart = mxid.split(':')[0][1:]  # Remove @ and domain
+                    if localpart.lower() == mention.lower():
+                        resolved_mxids.append(mxid)
+                        break
+        
+        return resolved_mxids
+    
+    @staticmethod
+    async def create_mention_notifications(
+        mentioned_mxids: List[str], 
+        room_id: str, 
+        event_id: str, 
+        sender_mxid: str, 
+        message_content: dict
+    ):
+        """Create notifications for mentioned users"""
+        if not mentioned_mxids:
+            return
+        
+        notifications = []
+        for mentioned_mxid in mentioned_mxids:
+            # Don't notify if user mentions themselves
+            if mentioned_mxid == sender_mxid:
+                continue
+                
+            notification = Notification(
+                user_mxid=mentioned_mxid,
+                room_id=room_id,
+                event_id=event_id,
+                sender_mxid=sender_mxid,
+                notification_type="mention",
+                content={
+                    "message": message_content,
+                    "mentioned_in": message_content.get("body", "")
+                }
+            )
+            notifications.append(notification.dict())
+        
+        if notifications:
+            await db.notifications.insert_many(notifications)
+            logger.info(f"Created {len(notifications)} mention notifications")
+
+mention_handler = MentionHandler()
+
 # Create the main app
 app = FastAPI(title="LibraChat Federation Server")
 api_router = APIRouter(prefix="/api")
