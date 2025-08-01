@@ -621,9 +621,9 @@ async def join_room(room_id: str, current_user: dict = Depends(get_current_activ
     }
 
 @api_router.post("/rooms/{room_id}/send/m.room.message")
-async def send_message(room_id: str, message: SendMessageRequest):
+async def send_message(room_id: str, message: SendMessageRequest, current_user: dict = Depends(get_current_active_user)):
     """Send a message to a Matrix room"""
-    user_mxid = MatrixID.user_id("admin")
+    user_mxid = current_user["mxid"]
     
     # Check if room exists
     room = await db.rooms.find_one({"room_id": room_id})
