@@ -112,8 +112,8 @@ class ContactsMessagingTester:
                 
             # Register second user
             user2_data = {
-                "username": f"bob_secure_{suffix}",
-                "email": f"bob{suffix}@example.com", 
+                "username": f"bob_secure_{self.suffix}",
+                "email": f"bob{self.suffix}@example.com", 
                 "password": "strongpass456",
                 "display_name": "Bob Security"
             }
