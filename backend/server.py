@@ -1310,6 +1310,12 @@ async def startup_event():
     await db.room_members.create_index([("room_id", 1), ("user_mxid", 1)])
     await db.server_keys.create_index([("server_name", 1), ("key_id", 1)])
     
+    # New indexes for contacts and private messaging
+    await db.contacts.create_index([("user_mxid", 1), ("contact_mxid", 1)], unique=True)
+    await db.contacts.create_index("user_mxid")
+    await db.private_messages.create_index([("sender_mxid", 1), ("recipient_mxid", 1), ("timestamp", -1)])
+    await db.private_messages.create_index("message_id", unique=True)
+    
     logger.info(f"LibraChat Federation Server started for {SERVER_NAME}")
     logger.info(f"Server signing key: {matrix_signing.get_verify_key_base64()}")
     logger.info("MongoDB indexes created successfully")
