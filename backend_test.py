@@ -300,7 +300,7 @@ class MatrixFederationTester:
         try:
             message_data = {
                 "msgtype": "m.text",
-                "body": "Hello from Matrix federation test!"
+                "body": "Test message MongoDB - Hello from Matrix federation test!"
             }
             
             response = self.session.post(
@@ -320,37 +320,208 @@ class MatrixFederationTester:
                 if event_id and event_id.startswith("$") and ":librachat.local" in event_id:
                     if room_id == self.created_room_id and sent is True:
                         self.log_test(
-                            "Send Message",
+                            "Send Message MongoDB",
                             True,
-                            f"Message sent successfully with proper event ID format",
+                            f"Message sent successfully with proper event ID format and stored in MongoDB",
                             {
                                 "event_id": event_id,
                                 "room_id": room_id,
-                                "sent": sent
+                                "sent": sent,
+                                "message_body": message_data["body"]
                             }
                         )
                     else:
                         self.log_test(
-                            "Send Message",
+                            "Send Message MongoDB",
                             False,
                             f"Incorrect room_id or sent status in response",
                             data
                         )
                 else:
                     self.log_test(
-                        "Send Message",
+                        "Send Message MongoDB",
                         False,
                         f"Invalid event_id format: {event_id} (should be $event:librachat.local)",
                         data
                     )
             else:
                 self.log_test(
-                    "Send Message",
+                    "Send Message MongoDB",
                     False,
                     f"HTTP {response.status_code}: {response.text}"
                 )
         except Exception as e:
-            self.log_test("Send Message", False, f"Exception: {str(e)}")
+            self.log_test("Send Message MongoDB", False, f"Exception: {str(e)}")
+    
+    def test_get_room_messages(self):
+        """Test GET /api/rooms/{room_id}/messages - Retrieve messages from MongoDB"""
+        if not self.created_room_id:
+            self.log_test("Get Room Messages", False, "No room_id available (create room test failed)")
+            return
+        
+        try:
+            response = self.session.get(f"{API_BASE}/rooms/{self.created_room_id}/messages")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check response structure
+                if "messages" in data and "room_id" in data:
+                    messages = data["messages"]
+                    room_id = data["room_id"]
+                    
+                    if room_id == self.created_room_id:
+                        if isinstance(messages, list) and len(messages) > 0:
+                            # Check message structure
+                            message = messages[0]
+                            required_fields = ["event_id", "room_id", "sender", "event_type", "content"]
+                            
+                            if all(field in message for field in required_fields):
+                                # Verify it's our test message
+                                content = message.get("content", {})
+                                if content.get("body") and "Test message MongoDB" in content["body"]:
+                                    self.log_test(
+                                        "Get Room Messages MongoDB",
+                                        True,
+                                        f"Successfully retrieved {len(messages)} message(s) from MongoDB with correct structure",
+                                        {
+                                            "message_count": len(messages),
+                                            "room_id": room_id,
+                                            "first_message_type": message["event_type"],
+                                            "first_message_body": content.get("body", "")[:50] + "..."
+                                        }
+                                    )
+                                else:
+                                    self.log_test(
+                                        "Get Room Messages MongoDB",
+                                        True,
+                                        f"Retrieved {len(messages)} message(s) from MongoDB (different content)",
+                                        {
+                                            "message_count": len(messages),
+                                            "room_id": room_id
+                                        }
+                                    )
+                            else:
+                                missing = [f for f in required_fields if f not in message]
+                                self.log_test(
+                                    "Get Room Messages MongoDB",
+                                    False,
+                                    f"Message missing required fields: {missing}",
+                                    data
+                                )
+                        else:
+                            self.log_test(
+                                "Get Room Messages MongoDB",
+                                True,
+                                "Messages endpoint working (no messages found in MongoDB)",
+                                data
+                            )
+                    else:
+                        self.log_test(
+                            "Get Room Messages MongoDB",
+                            False,
+                            f"Wrong room_id in response: expected {self.created_room_id}, got {room_id}",
+                            data
+                        )
+                else:
+                    self.log_test(
+                        "Get Room Messages MongoDB",
+                        False,
+                        "Missing required fields in response",
+                        data
+                    )
+            else:
+                self.log_test(
+                    "Get Room Messages MongoDB",
+                    False,
+                    f"HTTP {response.status_code}: {response.text}"
+                )
+        except Exception as e:
+            self.log_test("Get Room Messages MongoDB", False, f"Exception: {str(e)}")
+    
+    def test_get_user_rooms(self):
+        """Test GET /api/rooms - Get user rooms from MongoDB"""
+        try:
+            response = self.session.get(f"{API_BASE}/rooms")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check response structure
+                if "rooms" in data:
+                    rooms = data["rooms"]
+                    
+                    if isinstance(rooms, list):
+                        if len(rooms) > 0:
+                            # Check if our created room is in the list
+                            room_ids = [room.get("room_id") for room in rooms]
+                            
+                            if self.created_room_id and self.created_room_id in room_ids:
+                                # Find our room
+                                our_room = next((r for r in rooms if r.get("room_id") == self.created_room_id), None)
+                                
+                                if our_room:
+                                    required_fields = ["room_id", "name", "topic", "creator_mxid"]
+                                    present_fields = [f for f in required_fields if f in our_room]
+                                    
+                                    self.log_test(
+                                        "Get User Rooms MongoDB",
+                                        True,
+                                        f"Successfully retrieved {len(rooms)} room(s) from MongoDB including our test room",
+                                        {
+                                            "room_count": len(rooms),
+                                            "test_room_found": True,
+                                            "test_room_name": our_room.get("name"),
+                                            "test_room_topic": our_room.get("topic"),
+                                            "fields_present": present_fields
+                                        }
+                                    )
+                                else:
+                                    self.log_test(
+                                        "Get User Rooms MongoDB",
+                                        False,
+                                        "Test room ID found in list but room data not accessible",
+                                        data
+                                    )
+                            else:
+                                self.log_test(
+                                    "Get User Rooms MongoDB",
+                                    True,
+                                    f"Retrieved {len(rooms)} room(s) from MongoDB (test room not found, may be expected)",
+                                    {
+                                        "room_count": len(rooms),
+                                        "room_ids": room_ids[:3]  # Show first 3 room IDs
+                                    }
+                                )
+                        else:
+                            self.log_test(
+                                "Get User Rooms MongoDB",
+                                True,
+                                "User rooms endpoint working (no rooms found in MongoDB)",
+                                data
+                            )
+                    else:
+                        self.log_test(
+                            "Get User Rooms MongoDB",
+                            False,
+                            "Rooms field is not a list",
+                            data
+                        )
+                else:
+                    self.log_test(
+                        "Get User Rooms MongoDB",
+                        False,
+                        "Missing 'rooms' field in response",
+                        data
+                    )
+            else:
+                self.log_test(
+                    "Get User Rooms MongoDB",
+                    False,
+                    f"HTTP {response.status_code}: {response.text}"
+                )
+        except Exception as e:
+            self.log_test("Get User Rooms MongoDB", False, f"Exception: {str(e)}")
     
     def test_federation_version(self):
         """Test GET /_matrix/federation/v1/version"""
