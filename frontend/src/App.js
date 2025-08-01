@@ -201,6 +201,9 @@ function App() {
   const joinRoom = async (room) => {
     try {
       await axios.post(`${API}/rooms/${room.room_id}/join`);
+      
+      // Clear messages when switching rooms
+      setMessages([]);
       setCurrentRoom(room);
       
       // Load existing messages
