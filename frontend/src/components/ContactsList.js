@@ -47,13 +47,16 @@ const ContactsList = ({ onSelectContact, selectedContact }) => {
 
     setLoading(true);
     try {
+      console.log('ContactsList - Searching for:', query.trim());
       const response = await axios.post(`${API}/contacts/search`, {
         query: query.trim()
       });
+      console.log('ContactsList - Search response:', response.data);
       setSearchResults(response.data.users || []);
       setIsSearching(true);
     } catch (error) {
-      console.error('Search failed:', error);
+      console.error('ContactsList - Search failed:', error);
+      console.error('ContactsList - Error response:', error.response?.data);
       setSearchResults([]);
     } finally {
       setLoading(false);
