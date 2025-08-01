@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -10,16 +11,19 @@ import time
 import hashlib
 import hmac
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Dict, Any, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 import base64
 import canonicaljson
 from signedjson import key, sign
 import httpx
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+import bcrypt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
