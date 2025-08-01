@@ -51,7 +51,7 @@ class ContactsMessagingTester:
             # Register first user
             user1_data = {
                 "username": "alice_crypto",
-                "email": "alice@librachat.local",
+                "email": "alice@example.com",
                 "password": "securepass123",
                 "display_name": "Alice Cryptographer"
             }
