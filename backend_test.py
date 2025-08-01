@@ -173,8 +173,8 @@ class ContactsMessagingTester:
             # Set authorization header for user1
             headers = {"Authorization": f"Bearer {self.user1_token}"}
             
-            # Search for user2 by username
-            search_data = {"query": "bob_secure"}
+            # Search for user2 by username (use partial match since we have suffix)
+            search_data = {"query": f"bob_secure_{self.suffix}"}
             response = self.session.post(f"{API_BASE}/contacts/search", json=search_data, headers=headers)
             
             if response.status_code == 200:
